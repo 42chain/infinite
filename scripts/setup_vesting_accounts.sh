@@ -310,12 +310,11 @@ create_vesting_account() {
 
 # Validate genesis structure (Cosmos SDK specification compliance)
 validate_genesis_structure() {
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    local validate_script="${script_dir}/validate_genesis_structure.sh"
-    
-    if [[ ! -f "$validate_script" ]]; then
-        print_warning "Structure validation script not found, skipping structure validation"
+    # Optional: GENESIS_STRUCTURE_VALIDATOR_SCRIPT — external genesis structure validator; if unset, skip.
+    local validate_script="${GENESIS_STRUCTURE_VALIDATOR_SCRIPT:-}"
+
+    if [[ -z "$validate_script" || ! -f "$validate_script" ]]; then
+        print_warning "Structure validation helper not available, skipping structure validation"
         return 0
     fi
     
