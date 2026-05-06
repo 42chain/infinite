@@ -7,7 +7,7 @@
 **🌐 [infinitedrive.xyz](https://infinitedrive.xyz)** | **📚 [Official Documentation](https://docs.infinitedrive.xyz/en)** | **🔬 [Deep Thought Labs](https://deep-thought.computer)**
 
 <div align="center">
-  <img src="assets/dontpanic-space.jpg" alt="Don't Panic - Infinite Improbability Drive" width="600" style="max-width: 100%; height: auto; border-radius: 8px; margin: 2rem 0;" />
+  <img src="repo-header-infinite.jpg" alt="Don't Panic - Infinite Improbability Drive" width="600" style="max-width: 100%; height: auto; border-radius: 8px; margin: 2rem 0;" />
 </div>
 
 ---
