@@ -754,7 +754,6 @@ func NewTestNetworkFixture() sdknetwork.TestFixture {
 	app := evmd.NewExampleApp(
 		log.NewNopLogger(),
 		dbm.NewMemDB(),
-		nil,
 		true,
 		simtestutil.EmptyAppOptions{},
 	)
@@ -763,7 +762,6 @@ func NewTestNetworkFixture() sdknetwork.TestFixture {
 		return evmd.NewExampleApp(
 			log.NewNopLogger(),
 			dbm.NewMemDB(),
-			nil,
 			true,
 			simtestutil.EmptyAppOptions{},
 		)

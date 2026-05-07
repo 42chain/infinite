@@ -9,9 +9,13 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/cosmos/evm/x/vm/types"
+<<<<<<< HEAD
 	ibctesting "github.com/cosmos/ibc-go/v10/testing"
 
 	sdk "github.com/cosmos/cosmos-sdk/types"
+=======
+	ibctesting "github.com/cosmos/ibc-go/v11/testing"
+>>>>>>> v0.7.0
 )
 
 var (
