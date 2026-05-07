@@ -35,7 +35,8 @@ import (
 )
 
 const (
-	testBondDenom = "aatom"
+	// Align with fork identity to satisfy EVMCoinInfo invariants.
+	testBondDenom = constants.ExampleAttoDenom
 	testGas       = uint64(21_000)
 )
 

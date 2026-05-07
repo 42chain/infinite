@@ -16,7 +16,7 @@ import (
 func TestHyperlane_ModuleStoresAndKeepers(t *testing.T) {
 	// Not parallel: NewExampleApp touches package-level encoding/amino state (race under -race).
 
-	app := CreateEvmd(constants.ExampleChainID.ChainID, constants.EighteenDecimalsChainID, false)
+	app := CreateEvmd(constants.ExampleChainID.ChainID, constants.EighteenDecimalsChainID)
 
 	require.NotNil(t, app.GetKey(hyperlanetypes.ModuleName))
 	require.NotNil(t, app.GetKey(warptypes.ModuleName))
@@ -41,7 +41,7 @@ func TestHyperlane_ModuleStoresAndKeepers(t *testing.T) {
 
 // TestHyperlane_DefaultGenesisContainsModules ensures DefaultGenesis includes hyperlane and warp.
 func TestHyperlane_DefaultGenesisContainsModules(t *testing.T) {
-	app := CreateEvmd(constants.ExampleChainID.ChainID, constants.EighteenDecimalsChainID, false)
+	app := CreateEvmd(constants.ExampleChainID.ChainID, constants.EighteenDecimalsChainID)
 
 	gen := app.DefaultGenesis()
 	require.Contains(t, gen, hyperlanetypes.ModuleName)

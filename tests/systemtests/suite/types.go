@@ -68,11 +68,7 @@ func MinimumGasPriceZeroArgs() []string {
 	}
 
 	// Add the zero minimum gas price argument
-<<<<<<< HEAD
-	return append(DefaultNodeArgs(), "--minimum-gas-prices=0"+clients.NativeBaseDenom)
-=======
-	return append(args, "--minimum-gas-prices=0atest")
->>>>>>> v0.7.0
+	return append(args, "--minimum-gas-prices=0"+clients.NativeBaseDenom)
 }
 
 // MempoolArgs returns the node arguments to run with the mempool.
@@ -84,14 +80,7 @@ func MempoolArgs() []string {
 	)
 }
 
-<<<<<<< HEAD
-// ExlcusiveMempoolArgs returns the node arguments to run with an exclusive app
-// mempool and no min gas price.
-func ExlcusiveMempoolMinGasPriceZeroArgs() []string {
-	return append(ExlcusiveMempoolArgs(), "--minimum-gas-prices=0"+clients.NativeBaseDenom)
-=======
 // MempoolMinGasPriceZeroArgs returns the node arguments to run with the mempool with no min gas price.
 func MempoolMinGasPriceZeroArgs() []string {
-	return append(MempoolArgs(), "--minimum-gas-prices=0atest")
->>>>>>> v0.7.0
+	return append(MempoolArgs(), "--minimum-gas-prices=0"+clients.NativeBaseDenom)
 }

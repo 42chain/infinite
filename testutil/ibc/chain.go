@@ -96,7 +96,6 @@ type TestChain struct {
 	// See issue https://github.com/cosmos/ibc-go/issues/3123 for more information.
 	SendMsgsOverride func(msgs ...sdk.Msg) (*abci.ExecTxResult, error)
 
-<<<<<<< HEAD
 	// UseEvmFeeDenom selects drop-based fees (EVM app); false uses stake for SimApp mint/fee flow.
 	UseEvmFeeDenom bool
 
@@ -107,14 +106,12 @@ type TestChain struct {
 	// stores bech32 under the "cosmos" HRP from genesis; after the global prefix is restored to
 	// the fork HRP, AccountI.GetAddress() decodes empty (AccAddressFromBech32 requires current prefix).
 	SenderAccAddr sdk.AccAddress
-=======
 	// nextBlockContextInitialized tracks whether NewNextBlockContext has been
 	// called for the current block. Calling it again would reset the finalize
 	// state and discard any writes made since the last call. GetContext uses
 	// this to initialize lazily and then return NewContextLegacy on subsequent
 	// calls so direct keeper writes accumulate across a single test body.
 	nextBlockContextInitialized bool
->>>>>>> v0.7.0
 }
 
 // NewTestChainWithValSet initializes a new TestChain instance with the given validator set

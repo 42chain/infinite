@@ -6,12 +6,7 @@ import (
 	"math/big"
 
 	"github.com/cometbft/cometbft/crypto/tmhash"
-
-<<<<<<< HEAD
-	evmmempool "github.com/cosmos/evm/mempool"
 	testconstants "github.com/cosmos/evm/testutil/constants"
-=======
->>>>>>> v0.7.0
 	"github.com/cosmos/evm/testutil/integration/base/factory"
 	"github.com/cosmos/evm/testutil/keyring"
 	evmtypes "github.com/cosmos/evm/x/vm/types"
@@ -26,18 +21,14 @@ import (
 // Constants
 const (
 	TxGas    = 100_000
-	feeDenom = "aatom"
+	feeDenom = testconstants.ExampleAttoDenom
 )
 
 // createCosmosSendTransactionWithKey creates a simple bank send transaction
 // with the specified key, sending 1000aatom
 func (s *IntegrationTestSuite) createCosmosSendTx(key keyring.Key, gasPrice *big.Int) sdk.Tx {
-<<<<<<< HEAD
-	feeDenom := testconstants.ExampleAttoDenom
-=======
 	return s.createCosmosSendTxWithAmount(key, big.NewInt(1000), gasPrice)
 }
->>>>>>> v0.7.0
 
 // createCosmosSendTransactionWithKey creates a simple bank send transaction
 // with the specified key and amount

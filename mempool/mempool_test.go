@@ -44,6 +44,14 @@ import (
 	banktypes "github.com/cosmos/cosmos-sdk/x/bank/types"
 )
 
+func init() {
+	// EVM txs use Add(sync=false) by default; without waiting on promotion, CountTx/Sync can race.
+	// This matches TxPool.Add / LegacyPool.Add docs: use sync inserts only in tests.
+	//
+	// Set once at init-time to avoid data races when tests run concurrently under `-race`.
+	mempool.AllowUnsafeSyncInsert = true
+}
+
 func TestMempool_Reserver(t *testing.T) {
 	mp, s := setupMempoolWithAccounts(t, 3)
 	txConfig, accounts := s.txConfig, s.accounts
@@ -632,7 +640,6 @@ type testMempoolDependencies struct {
 	accounts        []testAccount
 }
 
-<<<<<<< HEAD:mempool/krakatoa_mempool_test.go
 // setTestBech32Prefixes aligns global SDK prefixes with testutil constants before encoding.MakeConfig.
 func setTestBech32Prefixes(t *testing.T) {
 	t.Helper()
@@ -643,8 +650,6 @@ func setTestBech32Prefixes(t *testing.T) {
 	cfg.SetBech32PrefixForConsensusNode(p+sdk.PrefixValidator+sdk.PrefixConsensus, p+sdk.PrefixValidator+sdk.PrefixConsensus+sdk.PrefixPublic)
 }
 
-func setupKrakatoaMempoolWithAccounts(t *testing.T, numAccounts int) (*mempool.KrakatoaMempool, testMempoolDependencies) {
-=======
 // AdvanceNonce updates the mock vmKeeper to return newNonce for GetNonce(addr)
 // and a matching Account from GetAccount. Used to simulate chain-state advance
 // between blocks so legacypool's reactive reset path can observe the change.
@@ -713,14 +718,7 @@ func setupMempoolWithAccounts(t *testing.T, numAccounts int) (*mempool.Mempool, 
 
 //nolint:unparam
 func setupMempool(t *testing.T, numAccounts, insertQueueSize int) (*mempool.Mempool, testMempoolDependencies) {
->>>>>>> v0.7.0:mempool/mempool_test.go
 	t.Helper()
-
-	// EVM txs use Add(sync=false) by default; without waiting on promotion, CountTx/Sync can race.
-	// This matches TxPool.Add / LegacyPool.Add docs: use sync inserts only in tests.
-	prevAllowUnsafeSyncInsert := mempool.AllowUnsafeSyncInsert
-	mempool.AllowUnsafeSyncInsert = true
-	t.Cleanup(func() { mempool.AllowUnsafeSyncInsert = prevAllowUnsafeSyncInsert })
 
 	// Create accounts
 	accounts := make([]testAccount, numAccounts)

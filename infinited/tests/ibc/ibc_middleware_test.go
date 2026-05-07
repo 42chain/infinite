@@ -831,7 +831,6 @@ func (suite *MiddlewareTestSuite) TestOnRecvPacketNativeErc20() {
 				)
 				suite.Require().False(errAck.Success())
 
-
 				// SendEnabled=true causes our callback to succeed
 				evmApp.BankKeeper.SetSendEnabled(suite.evmChainA.GetContext(), nativeErc20.Denom, true)
 				isSendEnabled = evmApp.BankKeeper.IsSendEnabledDenom(suite.evmChainA.GetContext(), nativeErc20.Denom)
@@ -880,13 +879,8 @@ func (suite *MiddlewareTestSuite) TestOnRecvPacketNativeErc20() {
 				// the packet that failed conversion due to the minting restriction should instead remain as the bank token
 				// and will be in the isolated address used to invoke the callback
 				isolatedAddr := callbacktypes.GenerateIsolatedAddress(path.EndpointA.ChannelID,
-<<<<<<< HEAD:infinited/tests/ibc/ibc_middleware_test.go
 					suite.chainB.Bech32ForAccount(suite.chainB.SenderAccount))
-				trappedBal := evmApp.BankKeeper.GetBalance(evmCtx, isolatedAddr, nativeErc20.Denom)
-=======
-					suite.chainB.SenderAccount.GetAddress().String())
 				trappedBal := evmApp.BankKeeper.GetBalance(suite.evmChainA.GetContext(), isolatedAddr, nativeErc20.Denom)
->>>>>>> v0.7.0:evmd/tests/ibc/ibc_middleware_test.go
 				suite.Require().Equal(recvAmt.String(), trappedBal.Amount.String())
 			} else {
 				// Simple case: no callback, just verify hex recipient receives ERC20

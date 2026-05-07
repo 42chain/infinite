@@ -531,13 +531,12 @@ test-rpc-compat-stop:
 
 .PHONY: localnet-start localnet-stop localnet-build-env localnet-build-nodes test-rpc-compat test-rpc-compat-stop test-system test-system-docker test-system-docker-build test-system-docker-reuse build-v05 mocks
 
-test-system: build-v06 build
+test-system: build-v05 build
 	mkdir -p ./tests/systemtests/binaries/
 	cp "$(BUILDDIR)/$(EXAMPLE_BINARY)" ./tests/systemtests/binaries/evmd
 	cd tests/systemtests/Counter && forge build
 	$(MAKE) -C tests/systemtests test
 
-<<<<<<< HEAD
 # Run system tests in Linux container (recommended on macOS when legacy artifacts are Linux-only).
 # Base image must ship glibc >= the release legacy binary (e.g. v0.1.10 may require GLIBC_2.38+);
 # bookworm (2.36) is too old — use trixie (Debian 13) or newer.
@@ -642,14 +641,6 @@ build-v05:
 	fi; \
 	chmod +x "$$target"; \
 	echo "✅ Legacy binary ready at $$target"
-=======
-build-v06:
-	mkdir -p ./tests/systemtests/binaries/v0.6
-	git checkout v0.6.0
-	make build
-	cp $(BUILDDIR)/evmd ./tests/systemtests/binaries/v0.6
-	git checkout -
->>>>>>> v0.7.0
 
 mocks:
 	@echo "--> generating mocks"
