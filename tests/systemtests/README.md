@@ -85,6 +85,8 @@ Chain lifecycle:
 
 > ℹ️ `TestChainUpgrade` uses **`infinite_v0.2.x_to_v0.3.0`**, the same string as **`UpgradeName`** / **`UpgradeNameInfiniteV02xToV030`** in `infinited/upgrades.go` (production governance). The historical plan **`infinite-v0.1.10-to-v0.2.0`** remains registered for chain replay. Upstream’s sample plan names (e.g. `v0.4.0-to-v0.5.0`) appear only in their docs; this fork uses **`infinite_…`** plan strings.
 >
+> ℹ️ Package **`chainupgrade`** exports **one** **`RunChainUpgrade`** (`v0_2_0_to_v0_3_0.go`). Do not add a second upstream-only harness with the same symbol after merging cosmos/evm (see **`infinite-handbook`** **normas-migraciones-on-chain**).
+>
 > ℹ️ The shared system test suite keeps a single chain alive across multiple tests when the node arguments are identical. Running several tests back-to-back therefore re-uses the same process unless a scenario explicitly changes the node configuration.
 
 **Mempool broadcast scenarios** (`mempool/test_broadcast.go`): gossip deadlines and height assertions are tuned for **P2P latency under Docker/CI** (longer waits than the SDK default; height may drift slightly within a bound). That is **test harness** stability, not a change to node mempool logic.
