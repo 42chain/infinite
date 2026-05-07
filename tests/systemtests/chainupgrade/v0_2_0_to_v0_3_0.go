@@ -31,7 +31,8 @@ const (
 	// Keep this modest (not ~100): after PASSED the chain is often ~height 15–25; needing 80+ more
 	// blocks stresses Docker/CI and makes failures hard to distinguish from a stalled validator set.
 	upgradeHeight int64 = 45
-	upgradeName         = "infinite-v0.1.10-to-v0.2.0" // must match UpgradeName in infinited/upgrades.go
+	// Must match UpgradeName / UpgradeNameInfiniteV02xToV030 in infinited/upgrades.go (same string as production governance).
+	upgradeName = "infinite_v0.2.x_to_v0.3.0"
 
 	// legacyHaltHeight caps the legacy node; must stay well above upgradeHeight (safety net only;
 	// the real stop for the legacy binary is upgradeHeight via x/upgrade).
@@ -77,7 +78,7 @@ func RunChainUpgrade(t *testing.T, base *suite.BaseTestSuite) {
 	currentBranchBinary := sut.ExecBinary()
 	currentInitializer := sut.TestnetInitializer()
 
-	legacyBinary := systest.WorkDir + "/binaries/v0.5/evmd"
+	legacyBinary := systest.WorkDir + "/binaries/v0.2/evmd"
 	systest.Sut.SetExecBinary(legacyBinary)
 	systest.Sut.SetTestnetInitializer(systest.InitializerWithBinary(legacyBinary, systest.Sut))
 	systest.Sut.SetupChain()

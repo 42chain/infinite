@@ -11,6 +11,14 @@
 
 ## Infinite Drive — Changelog track
 
+## v0.3.0
+
+Follow [infinite_v0.2.x_to_v0.3.0.md](docs/migrations/infinite_v0.2.x_to_v0.3.0.md) for the active on-chain plan **`infinite_v0.2.x_to_v0.3.0`** (base **cosmos/evm** **v0.7.0**; technical stack migration in [v0.6.x_to_v0.7.0.md](docs/migrations/v0.6.x_to_v0.7.0.md)). Historical plan **`infinite-v0.1.10-to-v0.2.0`** remains registered for replay.
+
+### CONTINUOUS INTEGRATION
+
+- System-upgrade test: legacy GitHub release **`v0.2.0`** (`SYSTEMTEST_LEGACY_TAG`); download via **`make build-legacy-systemtest-binary`** (deprecated alias **`build-v05`**); artifact path **`tests/systemtests/binaries/v0.2/evmd`**; harness **`tests/systemtests/chainupgrade/v0_2_0_to_v0_3_0.go`**.
+
 ## v0.2.0
 
 Follow the [migration document](docs/migrations/infinite_v0.1.10_to_v0.2.0.md) for upgrade instructions.
@@ -69,7 +77,7 @@ Follow the [migration document](docs/migrations/infinite_v0.1.10_to_v0.2.0.md) f
 
 ### OPERATIONAL NOTES
 
-- When running chain upgrade system tests, `v0.1.10` is used as the legacy baseline for the upgrade scenario (see `Makefile` system test variables and `docs/guides/testing/CHAIN_UPGRADE_SYSTEM_TEST.md`).
+- When running chain upgrade system tests, **`v0.2.0`** is the default legacy baseline (`SYSTEMTEST_LEGACY_TAG` in the root `Makefile`; release must exist on GitHub with Linux archives + `checksums.txt`).
 
 ---
 

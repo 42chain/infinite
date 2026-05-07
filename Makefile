@@ -24,9 +24,9 @@ HTTPS_GIT := git@github.com:deep-thought-labs/infinite.git
 DOCKER := $(or $(shell command -v docker 2>/dev/null),docker)
 
 # Chain-upgrade system tests (tests/systemtests/chainupgrade): legacy binary is always taken from
-# GitHub Releases for SYSTEMTEST_LEGACY_TAG (build-v05). No git checkout / local compile of the tag.
-# Release assets are Linux-only; on macOS use `make test-system-docker`.
-SYSTEMTEST_LEGACY_TAG ?= v0.1.10
+# GitHub Releases for SYSTEMTEST_LEGACY_TAG (`make build-legacy-systemtest-binary`; alias: `build-v05`).
+# No git checkout / local compile of the tag. Release assets are Linux-only; on macOS use `make test-system-docker`.
+SYSTEMTEST_LEGACY_TAG ?= v0.2.0
 SYSTEMTEST_LEGACY_REPO ?= deep-thought-labs/infinite
 SYSTEMTEST_LEGACY_ASSET_LINUX_AMD64 ?= infinite_Linux_x86_64.tar.gz
 SYSTEMTEST_LEGACY_ASSET_LINUX_ARM64 ?= infinite_Linux_ARM64.tar.gz
@@ -529,16 +529,16 @@ test-rpc-compat:
 test-rpc-compat-stop:
 	cd tests/jsonrpc && docker compose down
 
-.PHONY: localnet-start localnet-stop localnet-build-env localnet-build-nodes test-rpc-compat test-rpc-compat-stop test-system test-system-docker test-system-docker-build test-system-docker-reuse build-v05 mocks
+.PHONY: localnet-start localnet-stop localnet-build-env localnet-build-nodes test-rpc-compat test-rpc-compat-stop test-system test-system-docker test-system-docker-build test-system-docker-reuse build-legacy-systemtest-binary build-v05 mocks
 
-test-system: build-v05 build
+test-system: build-legacy-systemtest-binary build
 	mkdir -p ./tests/systemtests/binaries/
 	cp "$(BUILDDIR)/$(EXAMPLE_BINARY)" ./tests/systemtests/binaries/evmd
 	cd tests/systemtests/Counter && forge build
 	$(MAKE) -C tests/systemtests test
 
 # Run system tests in Linux container (recommended on macOS when legacy artifacts are Linux-only).
-# Base image must ship glibc >= the release legacy binary (e.g. v0.1.10 may require GLIBC_2.38+);
+# Base image must ship glibc >= the release legacy binary (e.g. v0.2.0 may require GLIBC_2.38+);
 # bookworm (2.36) is too old — use trixie (Debian 13) or newer.
 # Do not pin --platform linux/amd64 on Apple Silicon: QEMU user-mode breaks CometBFT P2P SecretConnection
 # (chacha20poly1305: message authentication failed), numPeers=0, timeout waiting for node start.
@@ -594,7 +594,8 @@ test-system-docker-reuse:
 		bash -lc 'set -euo pipefail; export PATH="/usr/local/go/bin:$$PATH"; go version; forge --version; make test-system TEST_ARGS="$$TEST_ARGS"'
 
 # Download legacy chain-upgrade binary from GitHub Releases only (matches .goreleaser archive names).
-build-v05:
+# Installs to tests/systemtests/binaries/v0.2/evmd (pre-upgrade line vs current-branch binary).
+build-legacy-systemtest-binary:
 	@set -e; \
 	case "$$(uname -s)" in \
 		Darwin) \
@@ -605,8 +606,8 @@ build-v05:
 			echo ""; \
 			exit 1 ;; \
 	esac; \
-	mkdir -p ./tests/systemtests/binaries/v0.5; \
-	target="./tests/systemtests/binaries/v0.5/evmd"; \
+	mkdir -p ./tests/systemtests/binaries/v0.2; \
+	target="./tests/systemtests/binaries/v0.2/evmd"; \
 	asset=""; \
 	case "$$(uname -m)" in \
 		x86_64|amd64) asset="$(SYSTEMTEST_LEGACY_ASSET_LINUX_AMD64)" ;; \
@@ -641,6 +642,9 @@ build-v05:
 	fi; \
 	chmod +x "$$target"; \
 	echo "✅ Legacy binary ready at $$target"
+
+# Deprecated alias — prefer build-legacy-systemtest-binary.
+build-v05: build-legacy-systemtest-binary
 
 mocks:
 	@echo "--> generating mocks"

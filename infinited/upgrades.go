@@ -11,26 +11,36 @@ import (
 	upgradetypes "github.com/cosmos/cosmos-sdk/x/upgrade/types"
 )
 
-// UpgradeName is the software-upgrade plan name for Infinite Drive: use in governance
-// (MsgSoftwareUpgrade) and in TestChainUpgrade (tests/systemtests/chainupgrade/v0_1_10_to_v0_2_0.go).
-const UpgradeName = "infinite-v0.1.10-to-v0.2.0"
+const (
+	// UpgradeNameInfiniteV0110ToV020 is the historical software-upgrade plan (chain replay / nodes
+	// catching up through that height). MsgSoftwareUpgrade name must match exactly.
+	UpgradeNameInfiniteV0110ToV020 = "infinite-v0.1.10-to-v0.2.0"
+
+	// UpgradeNameInfiniteV02xToV030 is the active plan for operators moving from fork line v0.2.x
+	// to v0.3.0 (cosmos-evm base aligned with upstream v0.7.0). Use in governance and TestChainUpgrade.
+	UpgradeNameInfiniteV02xToV030 = "infinite_v0.2.x_to_v0.3.0"
+
+	// UpgradeName is the current governance-facing plan string (same as UpgradeNameInfiniteV02xToV030).
+	// Historical plan UpgradeNameInfiniteV0110ToV020 remains registered for state replay.
+	UpgradeName = UpgradeNameInfiniteV02xToV030
+)
 
 func (app EVMD) RegisterUpgradeHandlers() {
-	app.UpgradeKeeper.SetUpgradeHandler(
-		UpgradeName,
-		func(ctx context.Context, _ upgradetypes.Plan, fromVM module.VersionMap) (module.VersionMap, error) {
-			sdkCtx := sdk.UnwrapSDKContext(ctx)
-			sdkCtx.Logger().Debug("this is a debug level message to test that verbose logging mode has properly been enabled during a chain upgrade")
-			return app.ModuleManager.RunMigrations(ctx, app.Configurator(), fromVM)
-		},
-	)
+	upgradeHandler := func(ctx context.Context, _ upgradetypes.Plan, fromVM module.VersionMap) (module.VersionMap, error) {
+		sdkCtx := sdk.UnwrapSDKContext(ctx)
+		sdkCtx.Logger().Debug("this is a debug level message to test that verbose logging mode has properly been enabled during a chain upgrade")
+		return app.ModuleManager.RunMigrations(ctx, app.Configurator(), fromVM)
+	}
+
+	app.UpgradeKeeper.SetUpgradeHandler(UpgradeNameInfiniteV0110ToV020, upgradeHandler)
+	app.UpgradeKeeper.SetUpgradeHandler(UpgradeNameInfiniteV02xToV030, upgradeHandler)
 
 	upgradeInfo, err := app.UpgradeKeeper.ReadUpgradeInfoFromDisk()
 	if err != nil {
 		panic(err)
 	}
 
-	if upgradeInfo.Name == UpgradeName && !app.UpgradeKeeper.IsSkipHeight(upgradeInfo.Height) {
+	if upgradeInfo.Name == UpgradeNameInfiniteV0110ToV020 && !app.UpgradeKeeper.IsSkipHeight(upgradeInfo.Height) {
 		storeUpgrades := storetypes.StoreUpgrades{
 			Added: []string{
 				hyperlanetypes.ModuleName,
@@ -39,4 +49,5 @@ func (app EVMD) RegisterUpgradeHandlers() {
 		}
 		app.SetStoreLoader(upgradetypes.UpgradeStoreLoader(upgradeInfo.Height, &storeUpgrades))
 	}
+	// UpgradeNameInfiniteV02xToV030: no new KVStoreKey mounts vs fork v0.2.x; only RunMigrations in the handler.
 }

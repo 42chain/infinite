@@ -1,5 +1,7 @@
 # Infinite Drive — software upgrade `infinite-v0.1.10-to-v0.2.0`
 
+> **Historical plan:** This guide remains the reference for **`infinite-v0.1.10-to-v0.2.0`** (chain replay and archives). To upgrade from **fork v0.2.x** to **v0.3.0**, use [`infinite_v0.2.x_to_v0.3.0.md`](./infinite_v0.2.x_to_v0.3.0.md).
+
 This guide describes the **on-chain software-upgrade plan** that Infinite Drive uses when moving validator sets from the **v0.1.10** release line to a **current** `infinited` binary (v0.2.0-era tree). It covers the **exact governance plan name**, what the **upgrade handler** and **store loader** do, how **Hyperlane** and **Infinite Bank** fit in, and—**for operators who have not done a coordinated upgrade before**—what will happen on-chain and **how to prepare, vote, and switch binaries**.
 
 ## Table of contents
@@ -39,7 +41,7 @@ Use this **verbatim** in `MsgSoftwareUpgrade` proposals:
 infinite-v0.1.10-to-v0.2.0
 ```
 
-Registered in code as `UpgradeName` in `[infinited/upgrades.go](../../infinited/upgrades.go)`. The Go package in that file is named `evmd` for historical reasons; the binary you build and run is `infinited`. The `[tests/systemtests/chainupgrade/v0_1_10_to_v0_2_0.go](../../tests/systemtests/chainupgrade/v0_1_10_to_v0_2_0.go)` harness uses the **same** string (`upgradeName` constant) so CI matches production proposals.
+Registered in code as `UpgradeNameInfiniteV0110ToV020` in `[infinited/upgrades.go](../../infinited/upgrades.go)`. The Go package in that file is named `evmd` for historical reasons; the binary you build and run is `infinited`. Current CI exercises **[`v0_2_0_to_v0_3_0.go`](../../tests/systemtests/chainupgrade/v0_2_0_to_v0_3_0.go)** with plan **`infinite_v0.2.x_to_v0.3.0`** (same pattern: harness `upgradeName` matches governance).
 
 ## What the handler does today
 
@@ -58,10 +60,10 @@ Therefore the **`infinitebank`** module is not included in **`StoreUpgrades.Adde
 
 ## Binaries and CI
 
-- **Legacy node:** GitHub Release **`v0.1.10`** by default (`SYSTEMTEST_LEGACY_TAG` in the root `[Makefile](../../Makefile)`); download flow and overrides: [CHAIN_UPGRADE_SYSTEM_TEST.md](../guides/testing/CHAIN_UPGRADE_SYSTEM_TEST.md).
+- **Legacy node (when this was the active upgrade):** GitHub Release **`v0.1.10`** (`SYSTEMTEST_LEGACY_TAG` in the root `[Makefile](../../Makefile)`); download flow: [CHAIN_UPGRADE_SYSTEM_TEST.md](../guides/testing/CHAIN_UPGRADE_SYSTEM_TEST.md).
 - **Post-upgrade node:** binary built from this repository (`infinited`).
 
-The system test drops a legacy artifact under **`binaries/v0.5/evmd`** (path name is historical); the artifact is the **Infinite Drive** `v0.1.10` Linux binary from releases, not the current binary name.
+For **this** migration era, the harness installed the legacy artifact under `tests/systemtests/binaries/v0.5/evmd` (layout since superseded; see current paths in the Makefile / systemtest README).
 
 ## What validators should do (step by step)
 
@@ -108,7 +110,7 @@ Read this as a **checklist**. Replace **H** with the height chosen in the passed
 
 ## Example governance proposal (JSON)
 
-Below is a **template** aligned with how `TestChainUpgrade` submits the upgrade (`[v0_1_10_to_v0_2_0.go](../../tests/systemtests/chainupgrade/v0_1_10_to_v0_2_0.go)`). Adjust **deposit**, **title**, **summary**, **metadata**, fees, and **height** for your network.
+Below is a **template** aligned with how `TestChainUpgrade` submits an upgrade (same JSON shape as [`v0_2_0_to_v0_3_0.go`](../../tests/systemtests/chainupgrade/v0_2_0_to_v0_3_0.go); substitute **`plan.name`** with **`infinite-v0.1.10-to-v0.2.0`** for this plan). Adjust **deposit**, **title**, **summary**, **metadata**, fees, and **height** for your network.
 
 **1. Obtain the governance module address** (chain-specific):
 
@@ -175,7 +177,7 @@ infinited tx gov submit-proposal path/to/proposal.json \
 
 - **`messages`**: In Cosmos SDK **gov v1**, the executable content of the proposal is a list of messages. Here there is **only one**: upgrade the chain at **`height`** using plan **`name`**.
 - **`authority`**: Only the **gov module** may execute `MsgSoftwareUpgrade` on-chain; that is why this address is required.
-- **`plan.name`**: Must **match** `UpgradeName` in `[infinited/upgrades.go](../../infinited/upgrades.go)` **exactly**.
+- **`plan.name`**: For **this** upgrade, must be **`infinite-v0.1.10-to-v0.2.0`** — the same string as `UpgradeNameInfiniteV0110ToV020` in `[infinited/upgrades.go](../../infinited/upgrades.go)`.
 - **`plan.height`**: String form avoids JSON number issues on some tooling; it must be the **agreed** height **H**.
 
 ## Appendix: what changes (binary only; Drive)
@@ -196,4 +198,4 @@ infinited tx gov submit-proposal path/to/proposal.json \
 
 ## When to add a new upgrade plan
 
-Add a **new** `UpgradeName` string and handler in `[infinited/upgrades.go](../../infinited/upgrades.go)`, extend **`StoreUpgrades.Added`** for every **new** mountable store key, and update **this file** plus [CHAIN_UPGRADE_SYSTEM_TEST.md](../guides/testing/CHAIN_UPGRADE_SYSTEM_TEST.md) if the system test should exercise the new plan. Examples of triggers: **`x/group`**, Hyperlane major store layout changes, or any fork module that introduces a **new** `KVStoreKey`.
+Add a **new** plan constant and handler in `[infinited/upgrades.go](../../infinited/upgrades.go)` (keep prior plans registered for replay), extend **`StoreUpgrades.Added`** for every **new** mountable store key, add a short **`docs/migrations/infinite_…md`**, update **`SYSTEMTEST_LEGACY_TAG`** / harness filename / `binaries/<baseline>/` paths, and [CHAIN_UPGRADE_SYSTEM_TEST.md](../guides/testing/CHAIN_UPGRADE_SYSTEM_TEST.md). Fork playbook: see `infinite-handbook` **normas-migraciones-on-chain**. Examples of triggers: **`x/group`**, Hyperlane major store layout changes, or any fork module that introduces a **new** `KVStoreKey`.
