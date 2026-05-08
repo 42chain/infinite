@@ -89,9 +89,13 @@ Follow the [migration document](docs/migrations/infinite_v0.1.10_to_v0.2.0.md) f
 ## UNRELEASED
 
 ### DEPENDENCIES
+
 ### API-BREAKING
+
 ### IMPROVEMENTS
+
 ### FEATURES
+
 ### BUG FIXES
 
 ## v0.7.0
@@ -99,7 +103,8 @@ Follow the [migration document](docs/migrations/infinite_v0.1.10_to_v0.2.0.md) f
 Follow the [migration document](docs/migrations/v0.6.x_to_v0.7.0.md) for upgrade instructions.
 
 ### API-BREAKING
-- [\#1146](https://github.com/cosmos/evm/pull/1146) Remove `EndBlocker` based mempool updates, use `PrepareCheckStater` instead. 
+
+- [\#1146](https://github.com/cosmos/evm/pull/1146) Remove `EndBlocker` based mempool updates, use `PrepareCheckStater` instead.
 
 ### IMPROVEMENTS
 
@@ -157,12 +162,12 @@ Follow the [migration document](docs/migrations/v0.6.x_to_v0.7.0.md) for upgrade
 - [\#1050](https://github.com/cosmos/evm/pull/1050) Align precompile gas calculation with expected EVM gas semantics.
 - [\#1107](https://github.com/cosmos/evm/pull/1107) Skip StateDB commit error transactions during receipt conversion to prevent `invalid message index` errors in block RPCs.
 
-
 ## v0.6.0
 
 Follow the [migration document](docs/migrations/v0.5.x_to_v0.6.0.md) for upgrade instructions.
 
 ### BREAKING CHANGES
+
 - Removed IBC Transfer wrapper. Users are now required to use the precompile to transfer ERC20 tokens.
 - Added StateDB as a parameter to internal EVM calls.
 
