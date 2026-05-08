@@ -17,6 +17,7 @@ Follow [infinite_v0.2.x_to_v0.3.0.md](docs/migrations/infinite_v0.2.x_to_v0.3.0.
 
 ### CONTINUOUS INTEGRATION
 
+- **Coverage CI**: `test.yml` runs **six** `make test-unit-cover-*` matrix legs; integration is split into non-precompile paths vs **`tests/integration/precompiles`** (root and **`infinited/`**), each with its own Codecov flag and coverage profile; `make test-unit-cover` merges all six into **`coverage.txt`**. Precompile integration blocks use a **25m** test timeout (`COMMON_COVER_ARGS_PRECOMPILE_INTEGRATION` in the root **`Makefile`**). Documented in the Infinite Handbook — **`guides/development/TESTING.md`** and **`guides/infrastructure/CI_CD.md`**.
 - System-upgrade test: legacy GitHub release **`v0.2.0`** (`SYSTEMTEST_LEGACY_TAG`); download via **`make build-legacy-systemtest-binary`** (deprecated alias **`build-v05`**); artifact path **`tests/systemtests/binaries/v0.2/evmd`**; harness **`tests/systemtests/chainupgrade/v0_2_0_to_v0_3_0.go`**.
 - **`tests/systemtests/chainupgrade/`:** only the fork harness remains; upstream-only **`v6_v7.go`** (duplicate **`RunChainUpgrade`**) was removed so the systemtests module builds with a single entry point (see handbook **normas-migraciones-on-chain**).
 

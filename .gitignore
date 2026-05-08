@@ -17,8 +17,10 @@
 coverage.txt
 coverage_evm_core.txt
 coverage_evm_integration.txt
+coverage_evm_integration_precompiles.txt
 coverage_infinited_core.txt
 coverage_infinited_integration.txt
+coverage_infinited_integration_precompiles.txt
 yarn.lock
 
 # IDE

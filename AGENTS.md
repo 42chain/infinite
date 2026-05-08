@@ -69,7 +69,7 @@ make test-unit          # unit tests for the root module
 make test-evmd          # tests under ./evmd (run from evmd/, with -race)
 make test-race          # root module with -race
 make test-all           # both modules
-make test-unit-cover    # coverage for both modules
+make test-unit-cover    # six coverage blocks (merged coverage.txt); matches CI matrix: evm-core, evm-integration, evm-integration-precompiles, infinited-core, infinited-integration, infinited-integration-precompiles
 make test-solidity      # hardhat/forge tests
 make test-system        # system tests (requires forge + builds v0.6 + current)
 make test-rpc-compat    # JSON-RPC compatibility (Docker)
