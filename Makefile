@@ -40,6 +40,9 @@ SYSTEMTEST_DOCKER_GOCACHE_VOLUME ?= infinite-systemtest-gocache
 
 export GO111MODULE = on
 
+# Root `go.mod` directive — drives Docker golang:${GO_MOD_VERSION}-trixie (see test-system-docker*).
+GO_MOD_VERSION ?= $(shell sed -n '/^go /s/^go //p' "$(CURDIR)/go.mod" 2>/dev/null | head -n1)
+
 ###############################################################################
 ###                            Submodule Settings                           ###
 ###############################################################################
@@ -559,6 +562,7 @@ test-system: build-legacy-systemtest-binary build
 	$(MAKE) -C tests/systemtests test
 
 # Run system tests in Linux container (recommended on macOS when legacy artifacts are Linux-only).
+# Image tag golang:$(GO_MOD_VERSION)-trixie follows root go.mod; override GO_MOD_VERSION only if needed.
 # Base image must ship glibc >= the release legacy binary (e.g. v0.2.0 may require GLIBC_2.38+);
 # bookworm (2.36) is too old — use trixie (Debian 13) or newer.
 # Do not pin --platform linux/amd64 on Apple Silicon: QEMU user-mode breaks CometBFT P2P SecretConnection
@@ -568,16 +572,18 @@ test-system: build-legacy-systemtest-binary build
 #   make test-system-docker-build   # once (or when Dockerfile / toolchain changes)
 #   make test-system-docker-reuse   # fast: same image + persisted Go mod/build caches
 test-system-docker:
-	@echo "🐳 Running system tests in Linux container (ephemeral; apt + Foundry each run)..."
+	@if [ -z "$(GO_MOD_VERSION)" ]; then echo "ERROR: empty GO_MOD_VERSION (could not read go directive from go.mod)" >&2; exit 1; fi
+	@echo "🐳 Running system tests in Linux container (ephemeral; apt + Foundry each run); Go $(GO_MOD_VERSION) ..."
 	@$(DOCKER) run --rm \
 		-v "$(CURDIR):/workspace" \
 		-w /workspace \
+		-e GOTOOLCHAIN=auto \
 		-e SYSTEMTEST_LEGACY_TAG="$(SYSTEMTEST_LEGACY_TAG)" \
 		-e SYSTEMTEST_LEGACY_REPO="$(SYSTEMTEST_LEGACY_REPO)" \
 		-e SYSTEMTEST_LEGACY_ASSET_LINUX_AMD64="$(SYSTEMTEST_LEGACY_ASSET_LINUX_AMD64)" \
 		-e SYSTEMTEST_LEGACY_ASSET_LINUX_ARM64="$(SYSTEMTEST_LEGACY_ASSET_LINUX_ARM64)" \
 		-e SYSTEMTEST_LEGACY_CHECKSUM_FILE="$(SYSTEMTEST_LEGACY_CHECKSUM_FILE)" \
-		golang:1.25-trixie bash -lc '\
+		"golang:$(GO_MOD_VERSION)-trixie" bash -lc '\
 			set -euo pipefail; \
 			apt-get update -qq; \
 			apt-get install -y --no-install-recommends build-essential git make curl ca-certificates jq tar xz-utils python3; \
@@ -592,8 +598,9 @@ test-system-docker:
 
 # Build reusable system-test image (apt + Foundry baked in). Rebuild when tests/systemtests/docker/Dockerfile changes.
 test-system-docker-build:
-	@echo "🐳 Building $(SYSTEMTEST_DOCKER_IMAGE) ..."
-	@$(DOCKER) build -t "$(SYSTEMTEST_DOCKER_IMAGE)" -f tests/systemtests/docker/Dockerfile tests/systemtests/docker
+	@if [ -z "$(GO_MOD_VERSION)" ]; then echo "ERROR: empty GO_MOD_VERSION (could not read go directive from go.mod)" >&2; exit 1; fi
+	@echo "🐳 Building $(SYSTEMTEST_DOCKER_IMAGE) (Go $(GO_MOD_VERSION)) ..."
+	@$(DOCKER) build --build-arg "GO_VERSION=$(GO_MOD_VERSION)" -t "$(SYSTEMTEST_DOCKER_IMAGE)" -f tests/systemtests/docker/Dockerfile tests/systemtests/docker
 
 # Run system tests using prebuilt image + named volumes for Go module and build caches.
 test-system-docker-reuse:
@@ -603,6 +610,7 @@ test-system-docker-reuse:
 		-v "$(SYSTEMTEST_DOCKER_GOMOD_VOLUME):/go/pkg/mod" \
 		-v "$(SYSTEMTEST_DOCKER_GOCACHE_VOLUME):/root/.cache/go-build" \
 		-w /workspace \
+		-e GOTOOLCHAIN=auto \
 		-e GOMODCACHE=/go/pkg/mod \
 		-e GOCACHE=/root/.cache/go-build \
 		-e SYSTEMTEST_LEGACY_TAG="$(SYSTEMTEST_LEGACY_TAG)" \
