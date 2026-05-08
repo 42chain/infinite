@@ -1,3 +1,5 @@
+// Infinite fork: governance MsgSoftwareUpgrade names and Hyperlane store loaders differ from upstream
+// evmd/upgrades.go at merged tags; compare via infinite-handbook/scripts/merge-upstream/compare_infinited_upstream_evmd.py.
 package evmd
 
 import (

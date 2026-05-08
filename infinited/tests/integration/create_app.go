@@ -1,3 +1,6 @@
+// Helpers to construct the infinited app for integration tests (imports github.com/cosmos/evm/infinited).
+//
+// Infinite fork: chain IDs, denoms and temp dir prefixes may differ from upstream evmd examples; align with testutil/constants.
 package integration
 
 import (

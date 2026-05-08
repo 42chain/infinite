@@ -66,6 +66,7 @@ var maccPerms = map[string][]string{
 	feemarkettypes.ModuleName: nil,
 	erc20types.ModuleName:     {authtypes.Minter, authtypes.Burner},
 
+	// Infinite fork: Hyperlane module accounts (see app wiring).
 	hyperlanetypes.ModuleName: nil,
 	warptypes.ModuleName:      {authtypes.Minter, authtypes.Burner},
 }

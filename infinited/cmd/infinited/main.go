@@ -1,3 +1,4 @@
+// Command root for the infinited daemon (upstream equivalent binary name: evmd).
 package main
 
 import (
@@ -14,6 +15,7 @@ func main() {
 	setupSDKConfig()
 
 	rootCmd := cmd.NewRootCmd()
+	// Infinite fork: binary name shown to cobra/SDK ("infinited" vs upstream "evmd").
 	if err := svrcmd.Execute(rootCmd, "infinited", config.MustGetDefaultNodeHome()); err != nil {
 		fmt.Fprintln(rootCmd.OutOrStderr(), err)
 		os.Exit(1)

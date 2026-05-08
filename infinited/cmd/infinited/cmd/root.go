@@ -1,3 +1,4 @@
+// CLI commands for the infinited binary (upstream tree: evmd/cmd/evmd/cmd).
 package cmd
 
 import (
@@ -49,8 +50,7 @@ import (
 	genutilcli "github.com/cosmos/cosmos-sdk/x/genutil/client/cli"
 )
 
-// NewRootCmd creates a new root command for evmd. It is called once in the
-// main function.
+// NewRootCmd creates the root cobra command for infinited. It is called once from main.
 func NewRootCmd() *cobra.Command {
 	// we "pre"-instantiate the application for getting the injected/configured encoding configuration
 	// and the CLI options for the modules

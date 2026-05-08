@@ -103,7 +103,8 @@ func SetupWithGenesisValSet(t *testing.T, chainID string, evmChainID uint64, val
 	require.NoError(t, err)
 	bankGenesis.DenomMetadata = network.GenerateBankGenesisMetadata(evmChainID)
 	genesisState[banktypes.ModuleName] = app.AppCodec().MustMarshalJSON(&bankGenesis)
-	require.NoError(t, err)
+	// Infinite fork: EVM denom comes from DefaultGenesis / NewEVMGenesisState (drop). Upstream's helper patched
+	// evmGenesis.Params.EvmDenom here; we rely on the unified genesis path instead.
 
 	stateBytes, err := json.MarshalIndent(genesisState, "", " ")
 	require.NoError(t, err)

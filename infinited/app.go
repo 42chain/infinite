@@ -1,3 +1,9 @@
+// Package evmd implements the Cosmos EVM application for Infinite Drive (CLI/daemon binary name: infinited).
+//
+// Infinite fork maintenance: compare this tree to cosmos/evm evmd/ at each merged upstream tag
+// (infinite-handbook/scripts/merge-upstream/compare_infinited_upstream_evmd.py). Intentional divergences include Hyperlane,
+// Cosmos EVM x/bank governance extension, explicit staking/gov genesis overrides, denom "drop",
+// and imports under github.com/cosmos/evm/infinited/.
 package evmd
 
 import (
@@ -18,6 +24,7 @@ import (
 	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
 
 	dbm "github.com/cosmos/cosmos-db"
+	// Infinite fork: Hyperlane (interchain messaging) — not present in stock cosmos/evm evmd.
 	hyperlanecore "github.com/bcp-innovations/hyperlane-cosmos/x/core"
 	hyperlanekeeper "github.com/bcp-innovations/hyperlane-cosmos/x/core/keeper"
 	hyperlanetypes "github.com/bcp-innovations/hyperlane-cosmos/x/core/types"
@@ -34,6 +41,7 @@ import (
 	cosmosevmserver "github.com/cosmos/evm/server"
 	srvflags "github.com/cosmos/evm/server/flags"
 	"github.com/cosmos/evm/utils"
+	// Infinite fork: Cosmos EVM extended bank (e.g. denom metadata governance messages).
 	"github.com/cosmos/evm/x/bank"
 	evmbanktypes "github.com/cosmos/evm/x/bank/types"
 	"github.com/cosmos/evm/x/erc20"
@@ -324,7 +332,7 @@ func NewExampleApp(
 	)
 	app.BankKeeper = app.BankKeeper.WithObjStoreKey(oKeys[banktypes.ObjectStoreKey])
 
-	// Cosmos EVM x/bank extension (e.g. MsgSetDenomMetadata via governance)
+	// Infinite fork: register Cosmos EVM x/bank AppModule (governance-driven denom metadata, etc.).
 	infiniteBankModule := bank.NewAppModule(app.BankKeeper, authtypes.NewModuleAddress(govtypes.ModuleName))
 
 	// optional: enable sign mode textual by overwriting the default tx config (after setting the bank keeper)
@@ -517,6 +525,7 @@ func NewExampleApp(
 		app.TransferKeeper,
 	)
 
+	// Infinite fork: Hyperlane core + warp keepers and wiring below (module manager order).
 	hyperlaneK := hyperlanekeeper.NewKeeper(
 		appCodec,
 		app.AccountKeeper.AddressCodec(),
@@ -966,6 +975,7 @@ func (app *EVMD) DefaultGenesis() map[string]json.RawMessage {
 	mintGenState := NewMintGenesisState()
 	genesis[minttypes.ModuleName] = app.appCodec.MustMarshalJSON(mintGenState)
 
+	// Infinite fork: explicit staking/gov defaults with bond/min_deposit denom "drop" (upstream example leaves these solely to BasicModuleManager.DefaultGenesis).
 	stakingGenState := NewStakingGenesisState()
 	genesis[stakingtypes.ModuleName] = app.appCodec.MustMarshalJSON(stakingGenState)
 
