@@ -190,7 +190,7 @@ go.sum: go.mod
 
 vulncheck:
 	@go install golang.org/x/vuln/cmd/govulncheck@latest
-	@govulncheck ./...
+	@$(shell go env GOPATH)/bin/govulncheck ./...
 
 ###############################################################################
 ###                           Tests & Simulation                            ###
