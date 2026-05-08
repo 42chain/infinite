@@ -265,7 +265,10 @@ test-all:
 	@echo "🔍 Running evm module tests..."
 	@go test -race -tags=test -mod=readonly -timeout=15m $(PACKAGES_NOSIMULATION)
 	@echo "🔍 Running infinited module tests..."
-	@cd infinited && go test -race -tags=test -mod=readonly -timeout=15m $(PACKAGES_INFINITED)
+	# Infinite fork: infinited includes heavy integration suites that can (a) exceed 15m on cold caches with `-race`,
+	# and (b) deadlock/flake when multiple integration packages run concurrently (shared ports/processes).
+	# Run the infinited module tests serially (`-p=1`) and with a wider timeout to reduce spurious failures.
+	@cd infinited && go test -p=1 -race -tags=test -mod=readonly -timeout=30m $(PACKAGES_INFINITED)
 
 run-tests:
 ifneq (,$(shell which tparse 2>/dev/null))
