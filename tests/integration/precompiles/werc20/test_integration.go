@@ -546,7 +546,11 @@ func TestPrecompileIntegrationTestSuite(t *testing.T, create network.CreateEvmAp
 					Expect(err).ToNot(HaveOccurred(), "failed to unpack result")
 
 					// Infinite fork: el precompile refleja decimales nativos de la cadena; upstream asumía siempre 18 en esta aserción.
-					exp := uint8(testconstants.ExampleChainCoinInfo[chainId].Decimals)
+					nativeDecimals := testconstants.ExampleChainCoinInfo[chainId].Decimals
+					if nativeDecimals > 255 {
+						panic("test constants: chain coin decimals must fit ERC-20 uint8 metadata")
+					}
+					exp := uint8(nativeDecimals)
 					Expect(decimals).To(Equal(exp), "expected chain native decimals in WERC20 metadata")
 				},
 				)

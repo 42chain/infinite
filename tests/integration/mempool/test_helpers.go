@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/cometbft/cometbft/crypto/tmhash"
+
 	testconstants "github.com/cosmos/evm/testutil/constants"
 	"github.com/cosmos/evm/testutil/integration/base/factory"
 	"github.com/cosmos/evm/testutil/keyring"
