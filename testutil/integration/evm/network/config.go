@@ -137,6 +137,13 @@ func WithChainID(chainID testconstants.ChainID) ConfigOption {
 		}
 		cfg.chainCoins.evmCoin.Denom = evmCoinInfo.Denom
 		cfg.chainCoins.evmCoin.Decimals = evmtypes.Decimals(evmCoinInfo.Decimals)
+
+		// Infinite fork: enlazar ExtendedDenom para prefund en genesis (coins.go / DenomDecimalsMap).
+		if evmCoinInfo.Denom != evmCoinInfo.ExtendedDenom {
+			cfg.chainCoins.extendedPrefundDenom = evmCoinInfo.ExtendedDenom
+		} else {
+			cfg.chainCoins.extendedPrefundDenom = ""
+		}
 	}
 }
 

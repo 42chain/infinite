@@ -331,15 +331,8 @@ func (s *PrecompileTestSuite) TestFundCommunityPoolEvent() {
 				logs := stDB.Logs()
 				s.Require().Len(logs, 3, "expected exactly one event log *per coin*")
 
-				// For convenience, map the sdk.Coins to their big.Int amounts for checking
-				expected := []struct {
-					amount *big.Int
-					// denom  string // If your event includes a Denom field
-				}{
-					{amount: big.NewInt(10)},
-					{amount: big.NewInt(30)},
-					{amount: big.NewInt(20)}, // sorted by denom
-				}
+				// Infinite fork: orden de logs coincide con sdk.Coins ordenadas por denom; tras prefund extra en genesis no usar índices fijos con cantidades hardcodeadas.
+				sorted := coins.Sort()
 
 				for i, log := range logs {
 					s.Require().Equal(log.Address, s.precompile.Address(), "log address must match the precompile address")
@@ -354,8 +347,8 @@ func (s *PrecompileTestSuite) TestFundCommunityPoolEvent() {
 					s.Require().NoError(err)
 
 					s.Require().Equal(s.keyring.GetAddr(0), fundCommunityPoolEvent.Depositor)
-					s.Require().Equal(coins.GetDenomByIndex(i), fundCommunityPoolEvent.Denom)
-					s.Require().Equal(expected[i].amount, fundCommunityPoolEvent.Amount)
+					s.Require().Equal(sorted[i].Denom, fundCommunityPoolEvent.Denom)
+					s.Require().Equal(sorted[i].Amount.BigInt(), fundCommunityPoolEvent.Amount)
 				}
 			},
 		},

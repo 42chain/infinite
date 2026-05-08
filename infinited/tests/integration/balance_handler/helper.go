@@ -7,8 +7,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/cosmos/evm"
-	testutiltypes "github.com/cosmos/evm/testutil/types"
 	evmibctesting "github.com/cosmos/evm/testutil/ibc"
+	testutiltypes "github.com/cosmos/evm/testutil/types"
 	"github.com/cosmos/evm/x/vm/statedb"
 
 	errorsmod "cosmossdk.io/errors"

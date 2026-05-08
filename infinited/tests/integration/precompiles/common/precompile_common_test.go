@@ -1,5 +1,7 @@
 package common
 
+// Infinite fork: wrapper fino — suite compartida en github.com/cosmos/evm/tests/integration/precompiles/common con integration.CreateEvmd.
+
 import (
 	"testing"
 

@@ -9,8 +9,8 @@ import (
 	"github.com/cosmos/evm"
 	"github.com/cosmos/evm/contracts"
 	"github.com/cosmos/evm/infinited/tests/integration"
-	testconstants "github.com/cosmos/evm/testutil/constants"
 	debugprecompile "github.com/cosmos/evm/infinited/tests/testdata/debug"
+	testconstants "github.com/cosmos/evm/testutil/constants"
 	evmibctesting "github.com/cosmos/evm/testutil/ibc"
 	testutiltypes "github.com/cosmos/evm/testutil/types"
 
