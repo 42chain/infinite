@@ -160,16 +160,29 @@ func RunChainUpgrade(t *testing.T, base *suite.BaseTestSuite) {
 	t.Log("Upgrade height was reached. Upgrading chain")
 	sut.SetExecBinary(currentBranchBinary)
 	sut.SetTestnetInitializer(currentInitializer)
+	// SetupChain() above regenerated Comet config with default mempool.type=flood; Krakatoa + ValidateCrossConfig require app.
+	base.ModifyCometMempool(t, "app")
 	sut.StartChain(t, "--chain-id=local-4221", "--mempool.max-txs=0")
 
 	require.Equal(t, upgradeHeight+1, sut.CurrentHeight())
 
 	// smoke test to make sure the chain still functions.
 	cli = systest.NewCLIWrapper(t, sut, systest.Verbose)
-	to := cli.GetKeyAddr("node1")
-	from := cli.GetKeyAddr("node0")
-	got := cli.Run("tx", "bank", "send", from, to, "1"+clients.NativeBaseDenom, "--from=node0", "--fees="+feeCoin, "--chain-id=local-4221")
-	systest.RequireTxSuccess(t, got)
+	// Do not use GetKeyAddr here: CombinedOutput merges stderr (duplicate proto warnings) into
+	// keys show output and corrupts the address string when parsed as a single line.
+	show0 := cli.Keys("keys", "show", "node0", "-a")
+	show1 := cli.Keys("keys", "show", "node1", "-a")
+	from := parseKeysShowAddress(show0)
+	to := parseKeysShowAddress(show1)
+	require.NotEmpty(t, from, "keys show node0 -a: %s", show0)
+	require.NotEmpty(t, to, "keys show node1 -a: %s", show1)
+	// cli.Run → AwaitTxCommitted runs RequireTxSuccess on CombinedOutput before parsing txhash;
+	// stderr from infinited pollutes JSON — sanitize broadcast + each query tx response (awaitTxCommittedWithStrip).
+	rawTx, ok := cli.RunOnly("tx", "bank", "send", from, to, "1"+clients.NativeBaseDenom, "--from=node0", "--fees="+feeCoin, "--chain-id=local-4221")
+	require.True(t, ok, rawTx)
+	got, committed := awaitTxCommittedWithStrip(t, cli, sut, rawTx)
+	require.True(t, committed, got)
+	systest.RequireTxSuccess(t, stripLeadingNoiseBeforeJSON(got))
 }
 
 // gentxSelfDelegationCoins returns one "amount" string per validator gentx (e.g. 100... + NativeBaseDenom),
