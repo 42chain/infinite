@@ -210,6 +210,11 @@ COMMON_COVER_ARGS := -timeout=15m -covermode=atomic
 # on cold CI runners; wider timeout applies only to those two coverage targets (see test-unit-cover-*-precompiles).
 COMMON_COVER_ARGS_PRECOMPILE_INTEGRATION := -timeout=25m -covermode=atomic
 
+# Infinite fork: timing-only targets (`test-timing-*`) — same timeouts as coverage blocks but no `-covermode`
+# (avoids instrumentation overhead while diagnosing slow tests).
+COMMON_TIMING_ARGS := -timeout=15m
+COMMON_TIMING_ARGS_PRECOMPILE_INTEGRATION := -timeout=25m
+
 # Granular coverage blocks: root module vs `tests/integration`, `infinited` vs `infinited/tests/integration`,
 # and within each integration tree a split between `tests/integration/precompiles/*` and the rest.
 # Infinite fork: six blocks isolate heavyweight precompile suites for clearer CI attribution and timeouts.
@@ -270,6 +275,36 @@ test-unit-cover-infinited-integration-precompiles:
 	@echo "🔍 Coverage block: infinited integration precompiles (infinited/tests/integration/precompiles/*)..."
 	@cd infinited && go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS_PRECOMPILE_INTEGRATION) -coverpkg=$(COVERPKG_INFINITED) -coverprofile=../$(COVERAGE_INFINITED_INTEGRATION_PRECOMPILES) $(PACKAGES_INFINITED_INTEGRATION_PRECOMPILES)
 
+# Infinite fork: local per-test timing from `go test -json` (no -coverprofile). Same six blocks as
+# test-unit-cover-*; use for slow-test diagnosis only — does not replace coverage CI.
+# Parser also writes logs/<target>.log under repo root (gitignored); overwritten each run.
+test-timing-evm-core:
+	@echo "⏱️  Timing block: evm core (root module, excluding tests/integration)..."
+	@go test -race -tags=test -mod=readonly $(COMMON_TIMING_ARGS) -json $(PACKAGES_EVM_CORE) 2>&1 | go run ./scripts/cmd/go-test-json-timing -log test-timing-evm-core
+
+test-timing-evm-integration:
+	@echo "⏱️  Timing block: evm integration (root tests/integration/*, excluding precompiles subtree)..."
+	@go test -race -tags=test -mod=readonly $(COMMON_TIMING_ARGS) -json $(PACKAGES_EVM_INTEGRATION) 2>&1 | go run ./scripts/cmd/go-test-json-timing -log test-timing-evm-integration
+
+test-timing-evm-integration-precompiles:
+	@echo "⏱️  Timing block: evm integration precompiles (root tests/integration/precompiles/*)..."
+	@go test -race -tags=test -mod=readonly $(COMMON_TIMING_ARGS_PRECOMPILE_INTEGRATION) -json $(PACKAGES_EVM_INTEGRATION_PRECOMPILES) 2>&1 | go run ./scripts/cmd/go-test-json-timing -log test-timing-evm-integration-precompiles
+
+test-timing-infinited-core:
+	@echo "⏱️  Timing block: infinited core (excluding tests/integration)..."
+	@( cd infinited && go test -race -tags=test -mod=readonly $(COMMON_TIMING_ARGS) -json $(PACKAGES_INFINITED_CORE) ) 2>&1 | go run ./scripts/cmd/go-test-json-timing -log test-timing-infinited-core
+
+test-timing-infinited-integration:
+	@echo "⏱️  Timing block: infinited integration (infinited/tests/integration/*, excluding precompiles subtree)..."
+	@( cd infinited && go test -race -tags=test -mod=readonly $(COMMON_TIMING_ARGS) -json $(PACKAGES_INFINITED_INTEGRATION) ) 2>&1 | go run ./scripts/cmd/go-test-json-timing -log test-timing-infinited-integration
+
+test-timing-infinited-integration-precompiles:
+	@echo "⏱️  Timing block: infinited integration precompiles (infinited/tests/integration/precompiles/*)..."
+	@( cd infinited && go test -race -tags=test -mod=readonly $(COMMON_TIMING_ARGS_PRECOMPILE_INTEGRATION) -json $(PACKAGES_INFINITED_INTEGRATION_PRECOMPILES) ) 2>&1 | go run ./scripts/cmd/go-test-json-timing -log test-timing-infinited-integration-precompiles
+
+test-timing-all: test-timing-evm-core test-timing-evm-integration test-timing-evm-integration-precompiles test-timing-infinited-core test-timing-infinited-integration test-timing-infinited-integration-precompiles
+	@echo "⏱️  All six timing blocks completed."
+
 test-unit-cover-merge: test-unit-cover-evm-core test-unit-cover-evm-integration test-unit-cover-evm-integration-precompiles test-unit-cover-infinited-core test-unit-cover-infinited-integration test-unit-cover-infinited-integration-precompiles
 	@echo "🔀 Merging coverage blocks into coverage.txt..."
 	@echo "mode: atomic" > coverage.txt
@@ -309,7 +344,10 @@ test-solidity:
 .PHONY: run-tests test test-all $(TEST_TARGETS) \
 	test-unit-cover-evm-core test-unit-cover-evm-integration test-unit-cover-evm-integration-precompiles \
 	test-unit-cover-infinited-core test-unit-cover-infinited-integration test-unit-cover-infinited-integration-precompiles \
-	test-unit-cover-merge
+	test-unit-cover-merge \
+	test-timing-evm-core test-timing-evm-integration test-timing-evm-integration-precompiles \
+	test-timing-infinited-core test-timing-infinited-integration test-timing-infinited-integration-precompiles \
+	test-timing-all
 
 benchmark:
 	@go test -race -tags=test -mod=readonly -bench=. $(PACKAGES_NOSIMULATION)
