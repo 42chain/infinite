@@ -210,11 +210,6 @@ COMMON_COVER_ARGS := -timeout=15m -covermode=atomic
 # on cold CI runners; wider timeout applies only to those two coverage targets (see test-unit-cover-*-precompiles).
 COMMON_COVER_ARGS_PRECOMPILE_INTEGRATION := -timeout=25m -covermode=atomic
 
-# Infinite fork: timing-only targets (`test-timing-*`) — same timeouts as coverage blocks but no `-covermode`
-# (avoids instrumentation overhead while diagnosing slow tests).
-COMMON_TIMING_ARGS := -timeout=15m
-COMMON_TIMING_ARGS_PRECOMPILE_INTEGRATION := -timeout=25m
-
 # Granular coverage blocks: root module vs `tests/integration`, `infinited` vs `infinited/tests/integration`,
 # and within each integration tree a split between `tests/integration/precompiles/*` and the rest.
 # Infinite fork: six blocks isolate heavyweight precompile suites for clearer CI attribution and timeouts.
@@ -232,6 +227,18 @@ COVERAGE_EVM_INTEGRATION_PRECOMPILES := coverage_evm_integration_precompiles.txt
 COVERAGE_INFINITED_CORE := coverage_infinited_core.txt
 COVERAGE_INFINITED_INTEGRATION := coverage_infinited_integration.txt
 COVERAGE_INFINITED_INTEGRATION_PRECOMPILES := coverage_infinited_integration_precompiles.txt
+
+# test-report-* LHS may `cd infinited`; anchor RHS to repo root so `go run` and logs/* resolve consistently.
+GO_TEST_REPORT_PKG := $(CURDIR)/scripts/cmd/go-test-report
+
+# Shared `go test` recipes (identical flags to test-unit-cover-*). test-report-* appends -json and pipes to go-test-report.
+# Must follow PACKAGES_* and COVERAGE_* (immediate := expansion).
+CMD_COVER_EVM_CORE := go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_ALL) -coverprofile=$(COVERAGE_EVM_CORE) $(PACKAGES_EVM_CORE)
+CMD_COVER_EVM_INTEGRATION := go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_ALL) -coverprofile=$(COVERAGE_EVM_INTEGRATION) $(PACKAGES_EVM_INTEGRATION)
+CMD_COVER_EVM_INTEGRATION_PRECOMPILES := go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS_PRECOMPILE_INTEGRATION) -coverpkg=$(COVERPKG_ALL) -coverprofile=$(COVERAGE_EVM_INTEGRATION_PRECOMPILES) $(PACKAGES_EVM_INTEGRATION_PRECOMPILES)
+CMD_COVER_INFINITED_CORE := cd $(INFINITED_DIR) && go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_INFINITED) -coverprofile=../$(COVERAGE_INFINITED_CORE) $(PACKAGES_INFINITED_CORE)
+CMD_COVER_INFINITED_INTEGRATION := cd $(INFINITED_DIR) && go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_INFINITED) -coverprofile=../$(COVERAGE_INFINITED_INTEGRATION) $(PACKAGES_INFINITED_INTEGRATION)
+CMD_COVER_INFINITED_INTEGRATION_PRECOMPILES := cd $(INFINITED_DIR) && go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS_PRECOMPILE_INTEGRATION) -coverpkg=$(COVERPKG_INFINITED) -coverprofile=../$(COVERAGE_INFINITED_INTEGRATION_PRECOMPILES) $(PACKAGES_INFINITED_INTEGRATION_PRECOMPILES)
 
 TEST_PACKAGES := ./...
 TEST_TARGETS := test-unit test-evmd test-unit-cover test-race
@@ -253,57 +260,55 @@ test-unit-cover: test-unit-cover-merge
 
 test-unit-cover-evm-core:
 	@echo "🔍 Coverage block: evm core (root module, excluding tests/integration)..."
-	@go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_ALL) -coverprofile=$(COVERAGE_EVM_CORE) $(PACKAGES_EVM_CORE)
+	@$(CMD_COVER_EVM_CORE)
 
 test-unit-cover-evm-integration:
 	@echo "🔍 Coverage block: evm integration (root tests/integration/*, excluding precompiles subtree)..."
-	@go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_ALL) -coverprofile=$(COVERAGE_EVM_INTEGRATION) $(PACKAGES_EVM_INTEGRATION)
+	@$(CMD_COVER_EVM_INTEGRATION)
 
 test-unit-cover-evm-integration-precompiles:
 	@echo "🔍 Coverage block: evm integration precompiles (root tests/integration/precompiles/*)..."
-	@go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS_PRECOMPILE_INTEGRATION) -coverpkg=$(COVERPKG_ALL) -coverprofile=$(COVERAGE_EVM_INTEGRATION_PRECOMPILES) $(PACKAGES_EVM_INTEGRATION_PRECOMPILES)
+	@$(CMD_COVER_EVM_INTEGRATION_PRECOMPILES)
 
 test-unit-cover-infinited-core:
 	@echo "🔍 Coverage block: infinited core (excluding tests/integration)..."
-	@cd infinited && go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_INFINITED) -coverprofile=../$(COVERAGE_INFINITED_CORE) $(PACKAGES_INFINITED_CORE)
+	@$(CMD_COVER_INFINITED_CORE)
 
 test-unit-cover-infinited-integration:
 	@echo "🔍 Coverage block: infinited integration (infinited/tests/integration/*, excluding precompiles subtree)..."
-	@cd infinited && go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_INFINITED) -coverprofile=../$(COVERAGE_INFINITED_INTEGRATION) $(PACKAGES_INFINITED_INTEGRATION)
+	@$(CMD_COVER_INFINITED_INTEGRATION)
 
 test-unit-cover-infinited-integration-precompiles:
 	@echo "🔍 Coverage block: infinited integration precompiles (infinited/tests/integration/precompiles/*)..."
-	@cd infinited && go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS_PRECOMPILE_INTEGRATION) -coverpkg=$(COVERPKG_INFINITED) -coverprofile=../$(COVERAGE_INFINITED_INTEGRATION_PRECOMPILES) $(PACKAGES_INFINITED_INTEGRATION_PRECOMPILES)
+	@$(CMD_COVER_INFINITED_INTEGRATION_PRECOMPILES)
 
-# Infinite fork: local per-test timing from `go test -json` (no -coverprofile). Same six blocks as
-# test-unit-cover-*; use for slow-test diagnosis only — does not replace coverage CI.
-# Parser also writes logs/<target>.log under repo root (gitignored); overwritten each run.
-test-timing-evm-core:
-	@echo "⏱️  Timing block: evm core (root module, excluding tests/integration)..."
-	@go test -race -tags=test -mod=readonly $(COMMON_TIMING_ARGS) -json $(PACKAGES_EVM_CORE) 2>&1 | go run ./scripts/cmd/go-test-json-timing -log test-timing-evm-core
+# Enriched report: same `go test` recipe as test-unit-cover-* plus -json and scripts/cmd/go-test-report (writes logs/*.log).
+test-report-evm-core:
+	@echo "📋 Report block: evm core (same recipe as test-unit-cover-evm-core)..."
+	@bash -o pipefail -c '$(CMD_COVER_EVM_CORE) -json 2>&1 | ( cd "$(CURDIR)" && go run "$(GO_TEST_REPORT_PKG)" -log test-report-evm-core -tee=false -jsonl-out logs/test-report-evm-core.jsonl )'
 
-test-timing-evm-integration:
-	@echo "⏱️  Timing block: evm integration (root tests/integration/*, excluding precompiles subtree)..."
-	@go test -race -tags=test -mod=readonly $(COMMON_TIMING_ARGS) -json $(PACKAGES_EVM_INTEGRATION) 2>&1 | go run ./scripts/cmd/go-test-json-timing -log test-timing-evm-integration
+test-report-evm-integration:
+	@echo "📋 Report block: evm integration (same recipe as test-unit-cover-evm-integration)..."
+	@bash -o pipefail -c '$(CMD_COVER_EVM_INTEGRATION) -json 2>&1 | ( cd "$(CURDIR)" && go run "$(GO_TEST_REPORT_PKG)" -log test-report-evm-integration -tee=false -jsonl-out logs/test-report-evm-integration.jsonl )'
 
-test-timing-evm-integration-precompiles:
-	@echo "⏱️  Timing block: evm integration precompiles (root tests/integration/precompiles/*)..."
-	@go test -race -tags=test -mod=readonly $(COMMON_TIMING_ARGS_PRECOMPILE_INTEGRATION) -json $(PACKAGES_EVM_INTEGRATION_PRECOMPILES) 2>&1 | go run ./scripts/cmd/go-test-json-timing -log test-timing-evm-integration-precompiles
+test-report-evm-integration-precompiles:
+	@echo "📋 Report block: evm integration precompiles (same recipe as test-unit-cover-evm-integration-precompiles)..."
+	@bash -o pipefail -c '$(CMD_COVER_EVM_INTEGRATION_PRECOMPILES) -json 2>&1 | ( cd "$(CURDIR)" && go run "$(GO_TEST_REPORT_PKG)" -log test-report-evm-integration-precompiles -tee=false -jsonl-out logs/test-report-evm-integration-precompiles.jsonl )'
 
-test-timing-infinited-core:
-	@echo "⏱️  Timing block: infinited core (excluding tests/integration)..."
-	@( cd infinited && go test -race -tags=test -mod=readonly $(COMMON_TIMING_ARGS) -json $(PACKAGES_INFINITED_CORE) ) 2>&1 | go run ./scripts/cmd/go-test-json-timing -log test-timing-infinited-core
+test-report-infinited-core:
+	@echo "📋 Report block: infinited core (same recipe as test-unit-cover-infinited-core)..."
+	@bash -o pipefail -c '$(CMD_COVER_INFINITED_CORE) -json 2>&1 | ( cd "$(CURDIR)" && go run "$(GO_TEST_REPORT_PKG)" -log test-report-infinited-core -tee=false -jsonl-out logs/test-report-infinited-core.jsonl )'
 
-test-timing-infinited-integration:
-	@echo "⏱️  Timing block: infinited integration (infinited/tests/integration/*, excluding precompiles subtree)..."
-	@( cd infinited && go test -race -tags=test -mod=readonly $(COMMON_TIMING_ARGS) -json $(PACKAGES_INFINITED_INTEGRATION) ) 2>&1 | go run ./scripts/cmd/go-test-json-timing -log test-timing-infinited-integration
+test-report-infinited-integration:
+	@echo "📋 Report block: infinited integration (same recipe as test-unit-cover-infinited-integration)..."
+	@bash -o pipefail -c '$(CMD_COVER_INFINITED_INTEGRATION) -json 2>&1 | ( cd "$(CURDIR)" && go run "$(GO_TEST_REPORT_PKG)" -log test-report-infinited-integration -tee=false -jsonl-out logs/test-report-infinited-integration.jsonl )'
 
-test-timing-infinited-integration-precompiles:
-	@echo "⏱️  Timing block: infinited integration precompiles (infinited/tests/integration/precompiles/*)..."
-	@( cd infinited && go test -race -tags=test -mod=readonly $(COMMON_TIMING_ARGS_PRECOMPILE_INTEGRATION) -json $(PACKAGES_INFINITED_INTEGRATION_PRECOMPILES) ) 2>&1 | go run ./scripts/cmd/go-test-json-timing -log test-timing-infinited-integration-precompiles
+test-report-infinited-integration-precompiles:
+	@echo "📋 Report block: infinited integration precompiles (same recipe as test-unit-cover-infinited-integration-precompiles)..."
+	@bash -o pipefail -c '$(CMD_COVER_INFINITED_INTEGRATION_PRECOMPILES) -json 2>&1 | ( cd "$(CURDIR)" && go run "$(GO_TEST_REPORT_PKG)" -log test-report-infinited-integration-precompiles -tee=false -jsonl-out logs/test-report-infinited-integration-precompiles.jsonl )'
 
-test-timing-all: test-timing-evm-core test-timing-evm-integration test-timing-evm-integration-precompiles test-timing-infinited-core test-timing-infinited-integration test-timing-infinited-integration-precompiles
-	@echo "⏱️  All six timing blocks completed."
+test-report-all: test-report-evm-core test-report-evm-integration test-report-evm-integration-precompiles test-report-infinited-core test-report-infinited-integration test-report-infinited-integration-precompiles
+	@echo "📋 All six report blocks completed."
 
 test-unit-cover-merge: test-unit-cover-evm-core test-unit-cover-evm-integration test-unit-cover-evm-integration-precompiles test-unit-cover-infinited-core test-unit-cover-infinited-integration test-unit-cover-infinited-integration-precompiles
 	@echo "🔀 Merging coverage blocks into coverage.txt..."
@@ -345,9 +350,9 @@ test-solidity:
 	test-unit-cover-evm-core test-unit-cover-evm-integration test-unit-cover-evm-integration-precompiles \
 	test-unit-cover-infinited-core test-unit-cover-infinited-integration test-unit-cover-infinited-integration-precompiles \
 	test-unit-cover-merge \
-	test-timing-evm-core test-timing-evm-integration test-timing-evm-integration-precompiles \
-	test-timing-infinited-core test-timing-infinited-integration test-timing-infinited-integration-precompiles \
-	test-timing-all
+	test-report-evm-core test-report-evm-integration test-report-evm-integration-precompiles \
+	test-report-infinited-core test-report-infinited-integration test-report-infinited-integration-precompiles \
+	test-report-all
 
 benchmark:
 	@go test -race -tags=test -mod=readonly -bench=. $(PACKAGES_NOSIMULATION)
