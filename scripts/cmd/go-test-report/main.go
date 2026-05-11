@@ -48,6 +48,11 @@ type filterStats struct {
 	jsonOtherAction  int // named Test set but action not pass/fail/skip/output-to-buffer
 }
 
+const (
+	goTestActionFail = "fail"
+	statusFail       = "FAIL"
+)
+
 var safeLogBasename = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]*$`)
 
 func validateJSONLOutPath(name string) error {
@@ -66,6 +71,9 @@ func validateJSONLOutPath(name string) error {
 }
 
 func main() {
+	exitCode := 0
+	defer func() { os.Exit(exitCode) }()
+
 	logName := flag.String("log", "", "basename only: write report to logs/<name>.log under cwd")
 	jsonlOut := flag.String("jsonl-out", "", "optional relative path: append each stdin line (raw JSON) for debugging")
 	banner := flag.String("banner", "", "optional text printed once at the top of the report")
@@ -75,7 +83,8 @@ func main() {
 
 	if err := validateJSONLOutPath(*jsonlOut); err != nil {
 		fmt.Fprintf(os.Stderr, "go-test-report: %v\n", err)
-		os.Exit(1)
+		exitCode = 1
+		return
 	}
 
 	bannerText := strings.TrimSpace(*banner)
@@ -83,7 +92,8 @@ func main() {
 		b, err := os.ReadFile(*bannerFile)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "go-test-report: read banner file: %v\n", err)
-			os.Exit(1)
+			exitCode = 1
+			return
 		}
 		bannerText = strings.TrimSuffix(string(b), "\n")
 	}
@@ -91,15 +101,17 @@ func main() {
 	var jsonlFile io.Writer
 	if strings.TrimSpace(*jsonlOut) != "" {
 		if dir := filepath.Dir(*jsonlOut); dir != "." && dir != "" {
-			if err := os.MkdirAll(dir, 0750); err != nil {
+			if err := os.MkdirAll(dir, 0o750); err != nil {
 				fmt.Fprintf(os.Stderr, "go-test-report: mkdir: %v\n", err)
-				os.Exit(1)
+				exitCode = 1
+				return
 			}
 		}
 		f, err := os.Create(*jsonlOut)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "go-test-report: create jsonl: %v\n", err)
-			os.Exit(1)
+			exitCode = 1
+			return
 		}
 		defer f.Close()
 		jsonlFile = f
@@ -108,16 +120,19 @@ func main() {
 	var buf strings.Builder
 	if err := run(os.Stdin, &buf, *tee, os.Stderr, jsonlFile, bannerText); err != nil {
 		fmt.Fprintf(os.Stderr, "go-test-report: %v\n", err)
-		os.Exit(1)
+		exitCode = 1
+		return
 	}
 	data := buf.String()
 	if _, err := io.WriteString(os.Stdout, data); err != nil {
 		fmt.Fprintf(os.Stderr, "go-test-report: write stdout: %v\n", err)
-		os.Exit(1)
+		exitCode = 1
+		return
 	}
 	if err := writeReportLog(*logName, data); err != nil {
 		fmt.Fprintf(os.Stderr, "go-test-report: %v\n", err)
-		os.Exit(1)
+		exitCode = 1
+		return
 	}
 }
 
@@ -130,11 +145,11 @@ func writeReportLog(name, content string) error {
 		return fmt.Errorf("invalid -log %q (use letters, digits, ._- only; no path separators)", name)
 	}
 	dir := "logs"
-	if err := os.MkdirAll(dir, 0750); err != nil {
+	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return fmt.Errorf("create logs dir: %w", err)
 	}
 	path := filepath.Join(dir, name+".log")
-	if err := os.WriteFile(path, []byte(content), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
 		return fmt.Errorf("write %s: %w", path, err)
 	}
 	return nil
@@ -161,12 +176,12 @@ func run(in io.Reader, out io.Writer, tee bool, teeOut io.Writer, jsonlOut io.Wr
 	for sc.Scan() {
 		raw := sc.Text()
 		if jsonlOut != nil {
-			if _, err := fmt.Fprintln(jsonlOut, raw); err != nil {
+			if _, err := io.WriteString(jsonlOut, raw+"\n"); err != nil { //nolint:gosec // G705: replay go test -json lines to a debug file, not HTML
 				return err
 			}
 		}
 		if tee && teeOut != nil {
-			if _, err := fmt.Fprintln(teeOut, raw); err != nil {
+			if _, err := io.WriteString(teeOut, raw+"\n"); err != nil { //nolint:gosec // G705: echo JSON stream to stderr for live debugging
 				return err
 			}
 		}
@@ -208,10 +223,10 @@ func run(in io.Reader, out io.Writer, tee bool, teeOut io.Writer, jsonlOut io.Wr
 			continue
 		}
 
-		if ev.Test == "" && ev.Package != "" && (ev.Action == "pass" || ev.Action == "fail") {
+		if ev.Test == "" && ev.Package != "" && (ev.Action == "pass" || ev.Action == goTestActionFail) {
 			stTxt := "PASS"
-			if ev.Action == "fail" {
-				stTxt = "FAIL"
+			if ev.Action == goTestActionFail {
+				stTxt = statusFail
 			}
 			pkgResults = append(pkgResults, pkgOutcome{pkg: ev.Package, status: stTxt, elapsed: ev.Elapsed})
 			continue
@@ -232,8 +247,8 @@ func run(in io.Reader, out io.Writer, tee bool, teeOut io.Writer, jsonlOut io.Wr
 			results = append(results, testResult{status: "SKIP", elapsed: ev.Elapsed, pkg: ev.Package, test: ev.Test})
 			delete(outBuf, k)
 			nSkip++
-		case "fail":
-			tr := testResult{status: "FAIL", elapsed: ev.Elapsed, pkg: ev.Package, test: ev.Test}
+		case goTestActionFail:
+			tr := testResult{status: statusFail, elapsed: ev.Elapsed, pkg: ev.Package, test: ev.Test}
 			if b := outBuf[k]; b != nil && b.Len() > 0 {
 				tr.failOut = b.String()
 			}
@@ -279,7 +294,7 @@ func run(in io.Reader, out io.Writer, tee bool, teeOut io.Writer, jsonlOut io.Wr
 	}
 
 	for _, r := range results {
-		if r.status != "FAIL" || r.failOut == "" {
+		if r.status != statusFail || r.failOut == "" {
 			continue
 		}
 		_, _ = fmt.Fprintf(out, "\n---- %s / %s ----\n", r.pkg, r.test)
@@ -331,7 +346,7 @@ func writeSummary(out io.Writer, pass, fail, skip int, pkgResults []pkgOutcome, 
 		switch p.status {
 		case "PASS":
 			pkgPass++
-		case "FAIL":
+		case statusFail:
 			pkgFail++
 		}
 	}
