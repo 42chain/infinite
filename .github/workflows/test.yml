@@ -111,7 +111,7 @@ jobs:
         run: make ${{ steps.cov.outputs.make_target }}
       - uses: codecov/codecov-action@v5
         with:
-          file: ./${{ steps.cov.outputs.coverage_file }}
+          files: ./${{ steps.cov.outputs.coverage_file }}
           flags: ${{ matrix.block }}
           # We were getting a 500 error on codecov servers
           # so we decided to avoid blocking the CI if this fails
