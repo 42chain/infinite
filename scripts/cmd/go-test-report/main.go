@@ -294,7 +294,7 @@ func run(in io.Reader, out io.Writer, tee bool, teeOut io.Writer, jsonlOut io.Wr
 			wallDur = 0
 		}
 	}
-	writeSummary(out, nPass, nFail, nSkip, len(pkgResults), st, wallDur, wallOK)
+	writeSummary(out, nPass, nFail, nSkip, pkgResults, st, wallDur, wallOK)
 	return nil
 }
 
@@ -324,15 +324,39 @@ func formatWallClockDuration(d time.Duration) string {
 	return fmt.Sprintf("%s (~%dm %ds)", base, mins, secs)
 }
 
-func writeSummary(out io.Writer, pass, fail, skip, pkgN int, st filterStats, wallDur time.Duration, wallOK bool) {
+func writeSummary(out io.Writer, pass, fail, skip int, pkgResults []pkgOutcome, st filterStats, wallDur time.Duration, wallOK bool) {
+	pkgN := len(pkgResults)
+	pkgPass, pkgFail := 0, 0
+	for _, p := range pkgResults {
+		switch p.status {
+		case "PASS":
+			pkgPass++
+		case "FAIL":
+			pkgFail++
+		}
+	}
+	namedTotal := pass + fail + skip
+
 	_, _ = fmt.Fprintf(out, "\n--- summary ---\n\n")
-	_, _ = fmt.Fprintf(out, "Resultado de tests (lo principal):\n")
+	_, _ = fmt.Fprintf(out, "Tests listados por nombre (tabla superior STATUS / PACKAGE / TEST):\n")
+	_, _ = fmt.Fprintf(out, "  Son eventos JSON de go test -json con campo Test no vacío y acción pass, fail o skip.\n")
 	_, _ = fmt.Fprintf(out, "  passed:   %d\n", pass)
 	_, _ = fmt.Fprintf(out, "  failed:   %d\n", fail)
 	_, _ = fmt.Fprintf(out, "  skipped:  %d\n", skip)
+	if namedTotal == 0 && pkgN > 0 {
+		_, _ = fmt.Fprintf(out, "\n")
+		_, _ = fmt.Fprintf(out, "  Nota: los tres contadores son 0 pero hay resultados por paquete más arriba\n")
+		_, _ = fmt.Fprintf(out, "  («package outcomes»). Las pruebas pueden haber corrido dentro de una suite\n")
+		_, _ = fmt.Fprintf(out, "  (p. ej. un solo Test que ejecuta Ginkgo) sin una fila nombrada por caso;\n")
+		_, _ = fmt.Fprintf(out, "  revisa esa sección y, si hace falta, el archivo .jsonl de -jsonl-out.\n")
+	} else if namedTotal > 0 {
+		_, _ = fmt.Fprintf(out, "\n")
+		_, _ = fmt.Fprintf(out, "  Nota: estos números no incluyen el resultado solo agregado a nivel de paquete;\n")
+		_, _ = fmt.Fprintf(out, "  combina con «package outcomes» y el detalle del stream más abajo.\n")
+	}
 	_, _ = fmt.Fprintf(out, "\n")
 	if wallOK {
-		_, _ = fmt.Fprintf(out, "Duración total (tiempo de reloj; no es suma de tests en paralelo):\n")
+		_, _ = fmt.Fprintf(out, "Duración total (entre primera y última marca temporal del stream; no suma en paralelo):\n")
 		_, _ = fmt.Fprintf(out, "  %s\n", formatWallClockDuration(wallDur))
 	} else {
 		_, _ = fmt.Fprintf(out, "Duración total (tiempo de reloj):\n")
@@ -340,15 +364,17 @@ func writeSummary(out io.Writer, pass, fail, skip, pkgN int, st filterStats, wal
 	}
 	_, _ = fmt.Fprintf(out, "\n")
 	if pkgN > 0 {
-		_, _ = fmt.Fprintf(out, "Resumen por paquete (sección «package outcomes»):\n")
-		_, _ = fmt.Fprintf(out, "  paquetes listados:  %d\n", pkgN)
+		_, _ = fmt.Fprintf(out, "Resultados por paquete (sección «package outcomes» más arriba):\n")
+		_, _ = fmt.Fprintf(out, "  paquetes PASS:  %d\n", pkgPass)
+		_, _ = fmt.Fprintf(out, "  paquetes FAIL:  %d\n", pkgFail)
+		_, _ = fmt.Fprintf(out, "  total listados: %d\n", pkgN)
 		_, _ = fmt.Fprintf(out, "\n")
 	}
-	_, _ = fmt.Fprintf(out, "Detalle adicional (no forma parte de passed/failed/skipped; quedó fuera de la tabla de tests):\n")
+	_, _ = fmt.Fprintf(out, "Detalle del stream (no suma a passed/failed/skipped de la tabla nombrada):\n")
 	_, _ = fmt.Fprintf(out, "  líneas vacías:               %d\n", st.blankLines)
-	_, _ = fmt.Fprintf(out, "  salida no reconocida:        %d  (p. ej. stderr mezclado con el stream)\n", st.nonJSONLines)
-	_, _ = fmt.Fprintf(out, "  eventos de paquete:          %d  (compilación, inicio, salida…)\n", st.jsonOtherPkgLine)
-	_, _ = fmt.Fprintf(out, "  fases intermedias de test:   %d  (p. ej. run/start antes del pass/fail)\n", st.jsonOtherAction)
+	_, _ = fmt.Fprintf(out, "  líneas no JSON:              %d  (p. ej. stderr mezclado)\n", st.nonJSONLines)
+	_, _ = fmt.Fprintf(out, "  otros eventos de paquete:    %d  (compilación, inicio, salida…)\n", st.jsonOtherPkgLine)
+	_, _ = fmt.Fprintf(out, "  acciones de test sin fila:   %d  (run/start antes del pass/fail por nombre)\n", st.jsonOtherAction)
 	_, _ = fmt.Fprintf(out, "--- end summary ---\n")
 }
 
