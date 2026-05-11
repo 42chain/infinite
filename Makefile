@@ -209,6 +209,9 @@ COMMON_COVER_ARGS := -timeout=15m -covermode=atomic
 # Infinite fork: precompile integration suites under `tests/integration/precompiles` often exceed 15m with `-race`
 # on cold CI runners; wider timeout applies only to those two coverage targets (see test-unit-cover-*-precompiles).
 COMMON_COVER_ARGS_PRECOMPILE_INTEGRATION := -timeout=25m -covermode=atomic
+# `infinited/tests/integration` (excluding precompiles subtree) aggregates ante, mempool, RPC-heavy suites with `-race`;
+# CI runners often exceed 15m (same rationale as `make test` full infinited path below using -timeout=30m).
+COMMON_COVER_ARGS_INFINITED_INTEGRATION := -timeout=30m -covermode=atomic
 
 # Granular coverage blocks: root module vs `tests/integration`, `infinited` vs `infinited/tests/integration`,
 # and within each integration tree a split between `tests/integration/precompiles/*` and the rest.
@@ -237,7 +240,7 @@ CMD_COVER_EVM_CORE := go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS
 CMD_COVER_EVM_INTEGRATION := go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_ALL) -coverprofile=$(COVERAGE_EVM_INTEGRATION) $(PACKAGES_EVM_INTEGRATION)
 CMD_COVER_EVM_INTEGRATION_PRECOMPILES := go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS_PRECOMPILE_INTEGRATION) -coverpkg=$(COVERPKG_ALL) -coverprofile=$(COVERAGE_EVM_INTEGRATION_PRECOMPILES) $(PACKAGES_EVM_INTEGRATION_PRECOMPILES)
 CMD_COVER_INFINITED_CORE := cd $(INFINITED_DIR) && go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_INFINITED) -coverprofile=../$(COVERAGE_INFINITED_CORE) $(PACKAGES_INFINITED_CORE)
-CMD_COVER_INFINITED_INTEGRATION := cd $(INFINITED_DIR) && go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_INFINITED) -coverprofile=../$(COVERAGE_INFINITED_INTEGRATION) $(PACKAGES_INFINITED_INTEGRATION)
+CMD_COVER_INFINITED_INTEGRATION := cd $(INFINITED_DIR) && go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS_INFINITED_INTEGRATION) -coverpkg=$(COVERPKG_INFINITED) -coverprofile=../$(COVERAGE_INFINITED_INTEGRATION) $(PACKAGES_INFINITED_INTEGRATION)
 CMD_COVER_INFINITED_INTEGRATION_PRECOMPILES := cd $(INFINITED_DIR) && go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS_PRECOMPILE_INTEGRATION) -coverpkg=$(COVERPKG_INFINITED) -coverprofile=../$(COVERAGE_INFINITED_INTEGRATION_PRECOMPILES) $(PACKAGES_INFINITED_INTEGRATION_PRECOMPILES)
 
 TEST_PACKAGES := ./...
