@@ -10,9 +10,7 @@ permissions: read-all
 
 jobs:
   cleanup-runs:
-    runs-on: self-hosted
-    container:
-      image: ubuntu:24.04 
+    runs-on: ubuntu-latest
     steps:
       - uses: rokroskar/workflow-run-cleanup-action@master
         env:
@@ -22,9 +20,7 @@ jobs:
   # Job-level skip: docs-only PRs (e.g. CHANGELOG.md, docs/**) do not schedule heavy jobs.
   # See docs/guides/infrastructure/CI_CD.md — Path filtering (docs-only changes).
   changes:
-    runs-on: self-hosted
-    container:
-      image: ubuntu:24.04 
+    runs-on: ubuntu-latest
     outputs:
       tests_go: ${{ steps.filter.outputs.tests_go }}
       tests_scripts: ${{ steps.filter.outputs.tests_scripts }}
@@ -61,9 +57,7 @@ jobs:
     name: test-unit-cover (${{ matrix.block }})
     needs: changes
     if: needs.changes.outputs.tests_go == 'true'
-    runs-on: self-hosted
-    container:
-      image: ubuntu:24.04 
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
@@ -128,9 +122,7 @@ jobs:
   test-scripts:
     needs: changes
     if: needs.changes.outputs.tests_scripts == 'true'
-    runs-on: self-hosted
-    container:
-      image: ubuntu:24.04 
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Setup Python
