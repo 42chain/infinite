@@ -13,17 +13,18 @@
 
 ## v0.3.0
 
-Follow [infinite_v0.2.x_to_v0.3.0.md](docs/migrations/infinite_v0.2.x_to_v0.3.0.md) for the active on-chain plan **`infinite_v0.2.x_to_v0.3.0`** (base **cosmos/evm** **v0.7.0**; technical stack migration in [v0.6.x_to_v0.7.0.md](docs/migrations/v0.6.x_to_v0.7.0.md)). Historical plan **`infinite-v0.1.10-to-v0.2.0`** remains registered for replay.
+Follow [infinite_v0.2.x_to_v0.3.0.md](docs/migrations/infinite_v0.2.x_to_v0.3.0.md) for upgrade instructions.
+
+- **Cosmos EVM alignment**: Codebase synchronized with upstream **Cosmos EVM v0.7.0**.
 
 ### CONTINUOUS INTEGRATION
 
-- **Coverage CI**: `test.yml` runs **six** `make test-unit-cover-*` matrix legs; integration is split into non-precompile paths vs **`tests/integration/precompiles`** (root and **`infinited/`**), each with its own Codecov flag and coverage profile; `make test-unit-cover` merges all six into **`coverage.txt`**. Precompile integration blocks use a **25m** test timeout (`COMMON_COVER_ARGS_PRECOMPILE_INTEGRATION` in the root **`Makefile`**). Documented in the Infinite Handbook — **`guides/development/TESTING.md`** and **`guides/infrastructure/CI_CD.md`**.
-- System-upgrade test: legacy GitHub release **`v0.2.0`** (`SYSTEMTEST_LEGACY_TAG`); download via **`make build-legacy-systemtest-binary`** (deprecated alias **`build-v05`**); artifact path **`tests/systemtests/binaries/v0.2/evmd`**; harness **`tests/systemtests/chainupgrade/v0_2_0_to_v0_3_0.go`**.
-- **`tests/systemtests/chainupgrade/`:** only the fork harness remains; upstream-only **`v6_v7.go`** (duplicate **`RunChainUpgrade`**) was removed so the systemtests module builds with a single entry point (see handbook **normas-migraciones-on-chain**).
+- **Coverage CI**: Now runs six separate coverage jobs in the matrix, with full Codecov integration for both unit and integration tests (including precompile paths).
+- **Local integration test reporting**: Implemented a local runner that executes integration tests and generates timestamped, summarized reports with visual formatting for easier local reading.
 
 ## v0.2.0
 
-Follow the [migration document](docs/migrations/infinite_v0.1.10_to_v0.2.0.md) for upgrade instructions.
+Follow [infinite_v0.1.10_to_v0.2.0.md](docs/migrations/infinite_v0.1.10_to_v0.2.0.md) for upgrade instructions.
 
 ### DEPENDENCIES
 
