@@ -15,9 +15,10 @@ import (
 )
 
 // Gossip deadlines: short waits are flaky under Docker/CI or a long-running suite (P2P can lag).
+// DynamicFeeTx promotion + gossip to node1 has exceeded 15s on golang:trixie Docker (ARM).
 const (
-	mempoolGossipBroadcastWait = 15 * time.Second
-	mempoolGossipSingleHopWait = 10 * time.Second
+	mempoolGossipBroadcastWait = 30 * time.Second
+	mempoolGossipSingleHopWait = 20 * time.Second
 )
 
 // RunTxBroadcasting tests transaction broadcasting and duplicate handling in a multi-node network.

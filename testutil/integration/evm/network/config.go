@@ -45,8 +45,6 @@ type Config struct {
 	otherCoinDenoms   []string
 	preFundedAccounts []sdktypes.AccAddress
 	balances          []banktypes.Balance
-
-	exclusiveMempool bool
 }
 
 type CustomGenesisState map[string]interface{}
@@ -139,6 +137,13 @@ func WithChainID(chainID testconstants.ChainID) ConfigOption {
 		}
 		cfg.chainCoins.evmCoin.Denom = evmCoinInfo.Denom
 		cfg.chainCoins.evmCoin.Decimals = evmtypes.Decimals(evmCoinInfo.Decimals)
+
+		// Infinite fork: enlazar ExtendedDenom para prefund en genesis (coins.go / DenomDecimalsMap).
+		if evmCoinInfo.Denom != evmCoinInfo.ExtendedDenom {
+			cfg.chainCoins.extendedPrefundDenom = evmCoinInfo.ExtendedDenom
+		} else {
+			cfg.chainCoins.extendedPrefundDenom = ""
+		}
 	}
 }
 
@@ -213,13 +218,5 @@ func WithConsensusParams(params *cmtproto.ConsensusParams) ConfigOption {
 		if params != nil {
 			cfg.customConsensusParams = params
 		}
-	}
-}
-
-// WithExclusiveMempool informs the app that it is running as the only mempool
-// in the application and it must manage rechecks.
-func WithExclusiveMempool() ConfigOption {
-	return func(cfg *Config) {
-		cfg.exclusiveMempool = true
 	}
 }

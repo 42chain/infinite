@@ -1,26 +1,30 @@
+// Package evmd implements the Cosmos EVM application for Infinite Drive (CLI/daemon binary name: infinited).
+//
+// Infinite fork maintenance: compare this tree to cosmos/evm evmd/ at each merged upstream tag
+// (infinite-handbook/scripts/merge-upstream/compare_infinited_upstream_evmd.py). Intentional divergences include Hyperlane,
+// Cosmos EVM x/bank governance extension, explicit staking/gov genesis overrides, denom "drop",
+// and imports under github.com/cosmos/evm/infinited/.
 package evmd
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
-
 	goruntime "runtime"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/cast"
 
 	// Force-load the tracer engines to trigger registration due to Go-Ethereum v1.10.15 changes
-	"github.com/cosmos/cosmos-sdk/baseapp/txnrunner"
-	"github.com/ethereum/go-ethereum/common"
-
 	_ "github.com/ethereum/go-ethereum/eth/tracers/js"
 	_ "github.com/ethereum/go-ethereum/eth/tracers/native"
 
 	abci "github.com/cometbft/cometbft/abci/types"
+	cmtproto "github.com/cometbft/cometbft/proto/tendermint/types"
 
 	dbm "github.com/cosmos/cosmos-db"
+	// Infinite fork: Hyperlane (interchain messaging) — not present in stock cosmos/evm evmd.
 	hyperlanecore "github.com/bcp-innovations/hyperlane-cosmos/x/core"
 	hyperlanekeeper "github.com/bcp-innovations/hyperlane-cosmos/x/core/keeper"
 	hyperlanetypes "github.com/bcp-innovations/hyperlane-cosmos/x/core/types"
@@ -37,6 +41,7 @@ import (
 	cosmosevmserver "github.com/cosmos/evm/server"
 	srvflags "github.com/cosmos/evm/server/flags"
 	"github.com/cosmos/evm/utils"
+	// Infinite fork: Cosmos EVM extended bank (e.g. denom metadata governance messages).
 	"github.com/cosmos/evm/x/bank"
 	evmbanktypes "github.com/cosmos/evm/x/bank/types"
 	"github.com/cosmos/evm/x/erc20"
@@ -49,29 +54,30 @@ import (
 	ibccallbackskeeper "github.com/cosmos/evm/x/ibc/callbacks/keeper"
 	"github.com/cosmos/evm/x/vm"
 	evmkeeper "github.com/cosmos/evm/x/vm/keeper"
+	vmrunner "github.com/cosmos/evm/x/vm/runner"
 	evmtypes "github.com/cosmos/evm/x/vm/types"
 	"github.com/cosmos/gogoproto/proto"
-	ibccallbacks "github.com/cosmos/ibc-go/v10/modules/apps/callbacks"
-	transfer "github.com/cosmos/ibc-go/v10/modules/apps/transfer"
-	transferkeeper "github.com/cosmos/ibc-go/v10/modules/apps/transfer/keeper"
-	ibctransfertypes "github.com/cosmos/ibc-go/v10/modules/apps/transfer/types"
-	transferv2 "github.com/cosmos/ibc-go/v10/modules/apps/transfer/v2"
-	ibc "github.com/cosmos/ibc-go/v10/modules/core"
-	porttypes "github.com/cosmos/ibc-go/v10/modules/core/05-port/types"
-	ibcapi "github.com/cosmos/ibc-go/v10/modules/core/api"
-	ibcexported "github.com/cosmos/ibc-go/v10/modules/core/exported"
-	ibckeeper "github.com/cosmos/ibc-go/v10/modules/core/keeper"
-	ibctm "github.com/cosmos/ibc-go/v10/modules/light-clients/07-tendermint"
-	ibctesting "github.com/cosmos/ibc-go/v10/testing"
+	ibccallbacks "github.com/cosmos/ibc-go/v11/modules/apps/callbacks"
+	transfer "github.com/cosmos/ibc-go/v11/modules/apps/transfer"
+	transferkeeper "github.com/cosmos/ibc-go/v11/modules/apps/transfer/keeper"
+	ibctransfertypes "github.com/cosmos/ibc-go/v11/modules/apps/transfer/types"
+	transferv2 "github.com/cosmos/ibc-go/v11/modules/apps/transfer/v2"
+	ibc "github.com/cosmos/ibc-go/v11/modules/core"
+	porttypes "github.com/cosmos/ibc-go/v11/modules/core/05-port/types"
+	ibcapi "github.com/cosmos/ibc-go/v11/modules/core/api"
+	ibcexported "github.com/cosmos/ibc-go/v11/modules/core/exported"
+	ibckeeper "github.com/cosmos/ibc-go/v11/modules/core/keeper"
+	ibctm "github.com/cosmos/ibc-go/v11/modules/light-clients/07-tendermint"
+	ibctesting "github.com/cosmos/ibc-go/v11/testing"
 
 	autocliv1 "cosmossdk.io/api/cosmos/autocli/v1"
 	reflectionv1 "cosmossdk.io/api/cosmos/reflection/v1"
 	"cosmossdk.io/client/v2/autocli"
 	"cosmossdk.io/core/appmodule"
 	"cosmossdk.io/log/v2"
-	storetypes "cosmossdk.io/store/types"
 
 	"github.com/cosmos/cosmos-sdk/baseapp"
+	"github.com/cosmos/cosmos-sdk/baseapp/txnrunner"
 	"github.com/cosmos/cosmos-sdk/client"
 	"github.com/cosmos/cosmos-sdk/client/flags"
 	"github.com/cosmos/cosmos-sdk/client/grpc/cmtservice"
@@ -84,6 +90,7 @@ import (
 	"github.com/cosmos/cosmos-sdk/server/api"
 	"github.com/cosmos/cosmos-sdk/server/config"
 	servertypes "github.com/cosmos/cosmos-sdk/server/types"
+	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	testdata_pulsar "github.com/cosmos/cosmos-sdk/testutil/testdata/testpb"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	sdkmempool "github.com/cosmos/cosmos-sdk/types/mempool"
@@ -214,7 +221,6 @@ type EVMD struct {
 func NewExampleApp(
 	logger log.Logger,
 	db dbm.DB,
-	traceStore io.Writer,
 	loadLatest bool,
 	appOpts servertypes.AppOptions,
 	baseAppOptions ...func(*baseapp.BaseApp),
@@ -228,6 +234,7 @@ func NewExampleApp(
 	legacyAmino := encodingConfig.Amino
 	interfaceRegistry := encodingConfig.InterfaceRegistry
 	txConfig := encodingConfig.TxConfig
+	txDecoder := encodingConfig.TxConfig.TxDecoder()
 
 	// enable optimistic execution
 	baseAppOptions = append(
@@ -240,10 +247,9 @@ func NewExampleApp(
 		logger,
 		db,
 		// use transaction decoder to support the sdk.Tx interface instead of sdk.StdTx
-		encodingConfig.TxConfig.TxDecoder(),
+		txDecoder,
 		baseAppOptions...,
 	)
-	bApp.SetCommitMultiStoreTracer(traceStore)
 	bApp.SetVersion(version.Version)
 	bApp.SetInterfaceRegistry(interfaceRegistry)
 	bApp.SetTxEncoder(txConfig.TxEncoder())
@@ -268,15 +274,6 @@ func NewExampleApp(
 	for _, k := range oKeys {
 		nonTransientKeys = append(nonTransientKeys, k)
 	}
-
-	// enable block stm for parallel execution
-	bApp.SetBlockSTMTxRunner(txnrunner.NewSTMRunner(
-		encodingConfig.TxConfig.TxDecoder(),
-		nonTransientKeys,
-		min(goruntime.GOMAXPROCS(0), goruntime.NumCPU()),
-		true,
-		func(ms storetypes.MultiStore) string { return sdk.DefaultBondDenom },
-	))
 
 	// disable block gas meter
 	bApp.SetDisableBlockGasMeter(true)
@@ -335,7 +332,7 @@ func NewExampleApp(
 	)
 	app.BankKeeper = app.BankKeeper.WithObjStoreKey(oKeys[banktypes.ObjectStoreKey])
 
-	// Cosmos EVM x/bank extension (e.g. MsgSetDenomMetadata via governance)
+	// Infinite fork: register Cosmos EVM x/bank AppModule (governance-driven denom metadata, etc.).
 	infiniteBankModule := bank.NewAppModule(app.BankKeeper, authtypes.NewModuleAddress(govtypes.ModuleName))
 
 	// optional: enable sign mode textual by overwriting the default tx config (after setting the bank keeper)
@@ -528,6 +525,7 @@ func NewExampleApp(
 		app.TransferKeeper,
 	)
 
+	// Infinite fork: Hyperlane core + warp keepers and wiring below (module manager order).
 	hyperlaneK := hyperlanekeeper.NewKeeper(
 		appCodec,
 		app.AccountKeeper.AddressCodec(),
@@ -599,6 +597,8 @@ func NewExampleApp(
 	// Override the ICS20 app module
 	transferModule := transfer.NewAppModule(app.TransferKeeper)
 
+	vmModule := vm.NewAppModule(app.EVMKeeper, app.AccountKeeper, app.BankKeeper, app.AccountKeeper.AddressCodec())
+
 	/****  Module Options ****/
 
 	// NOTE: Any module instantiated in the module manager that is later modified
@@ -627,7 +627,7 @@ func NewExampleApp(
 		ibctm.NewAppModule(tmLightClientModule),
 		transferModule,
 		// Cosmos EVM modules
-		vm.NewAppModule(app.EVMKeeper, app.AccountKeeper, app.BankKeeper, app.AccountKeeper.AddressCodec()),
+		vmModule,
 		feemarket.NewAppModule(app.FeeMarketKeeper),
 		erc20.NewAppModule(app.Erc20Keeper, app.AccountKeeper),
 		hyperlanecore.NewAppModule(appCodec, app.HyperlaneKeeper),
@@ -830,7 +830,25 @@ func NewExampleApp(
 			logger.Error("error on loading last version", "err", err)
 			os.Exit(1)
 		}
+
+		ctx := app.NewContextLegacy(true, cmtproto.Header{
+			Height:  app.LastBlockHeight(),
+			ChainID: app.ChainID(),
+		})
+
+		// set global evm variables from KV store
+		vmModule.HydrateGlobals(ctx)
 	}
+
+	vmrunner.SetRunner(bApp, txnrunner.NewSTMRunner(
+		txDecoder,
+		nonTransientKeys,
+		min(goruntime.GOMAXPROCS(0), goruntime.NumCPU()),
+		true,
+		func(ms storetypes.MultiStore) string {
+			return app.EVMKeeper.GetParams(sdk.NewContext(ms, cmtproto.Header{}, false, log.NewNopLogger())).EvmDenom
+		},
+	))
 
 	return app
 }
@@ -957,6 +975,7 @@ func (app *EVMD) DefaultGenesis() map[string]json.RawMessage {
 	mintGenState := NewMintGenesisState()
 	genesis[minttypes.ModuleName] = app.appCodec.MustMarshalJSON(mintGenState)
 
+	// Infinite fork: explicit staking/gov defaults with bond/min_deposit denom "drop" (upstream example leaves these solely to BasicModuleManager.DefaultGenesis).
 	stakingGenState := NewStakingGenesisState()
 	genesis[stakingtypes.ModuleName] = app.appCodec.MustMarshalJSON(stakingGenState)
 
@@ -1121,7 +1140,7 @@ func (app *EVMD) GetMempool() sdkmempool.ExtMempool {
 }
 
 func (app *EVMD) GetAnteHandler() sdk.AnteHandler {
-	return app.BaseApp.AnteHandler()
+	return app.AnteHandler()
 }
 
 // GetTxConfig implements the TestingApp interface.
@@ -1132,7 +1151,7 @@ func (app *EVMD) GetTxConfig() client.TxConfig {
 // Close unsubscribes from the CometBFT event bus (if set) and closes the mempool and underlying BaseApp.
 func (app *EVMD) Close() error {
 	var err error
-	if m, ok := app.GetMempool().(*evmmempool.ExperimentalEVMMempool); ok && m != nil {
+	if m, ok := app.EVMMempool.(*evmmempool.Mempool); ok && m != nil {
 		app.Logger().Info("Shutting down mempool")
 		err = m.Close()
 	}

@@ -7,7 +7,7 @@
 **🌐 [infinitedrive.xyz](https://infinitedrive.xyz)** | **📚 [Official Documentation](https://docs.infinitedrive.xyz/en)** | **🔬 [Deep Thought Labs](https://deep-thought.computer)**
 
 <div align="center">
-  <img src="assets/dontpanic-space.jpg" alt="Don't Panic - Infinite Improbability Drive" width="600" style="max-width: 100%; height: auto; border-radius: 8px; margin: 2rem 0;" />
+  <img src="repo-header-infinite.jpg" alt="Don't Panic - Infinite Improbability Drive" width="600" style="max-width: 100%; height: auto; border-radius: 8px; margin: 2rem 0;" />
 </div>
 
 ---
@@ -131,7 +131,7 @@ infinited start \
 
 The `--p2p.seeds` value above matches **mainnet** `network-data.json` at last documentation update; **always confirm** with the live JSON or the `P2P_SEED` one-liner. Schema: [`NETWORK_DATA_JSON_SCHEMA`](https://assets.infinitedrive.xyz/references/NETWORK_DATA_JSON_SCHEMA). Additional context: [blockchain documentation](https://docs.infinitedrive.xyz/en/blockchain).
 
-**Local-only** (no public sync): use `init` → `validate-genesis` → `start` with IDs you control and **do not** overwrite `genesis.json` from `assets.infinitedrive.xyz`. See [BUILDING.md — Running a node](docs/guides/development/BUILDING.md#running-a-node).
+**Local-only** (no public sync): use `init` → `validate-genesis` → `start` with IDs you control and **do not** overwrite `genesis.json` from `assets.infinitedrive.xyz`. See [blockchain documentation — Running a node](https://docs.infinitedrive.xyz/en/blockchain).
 
 For genesis, ModuleAccounts, network parameters, and related topics, see the [blockchain documentation](https://docs.infinitedrive.xyz/en/blockchain).
 
@@ -149,14 +149,14 @@ Use this when you **develop or verify the chain from source**: clone this repo, 
 git clone https://github.com/deep-thought-labs/infinite.git
 cd infinite
 
-# 2. Verify prerequisites (Go, Docker, Make, Git, jq, etc.)
+# 2. Verify build prerequisites (Go, Docker, Make, Git, etc.)
 ./scripts/check_build_prerequisites.sh
 
 # 3. Compile the binary
 make install
 # This installs infinited to $HOME/go/bin/infinited
 
-# 4. Initialize the node (generates a dev-oriented genesis; see BUILDING.md)
+# 4. Initialize the node (generates a dev-oriented genesis; see docs below)
 infinited init my-node --chain-id infinite_421018-1 --home ~/.infinited
 
 # 5. Replace genesis with the official file for your network (mainnet example — see table in Option 2)
@@ -176,10 +176,10 @@ infinited start \
 
 **Notes:**
 
-- **Networks / P2P**: Same **mainnet / testnet / creative** tables and **`network-data.json`** sources as [Option 2](#option-2-pre-built-binary-from-github-releases) above. **Local-only** runs: [BUILDING.md — Running a node, Option A](docs/guides/development/BUILDING.md#option-a--local-only-chain-no-public-network-sync) (genesis from `init`, omit `--p2p.seeds`).
-- Resolve anything `./scripts/check_build_prerequisites.sh` reports before `make install`. Full detail: [docs/guides/development/BUILDING.md](docs/guides/development/BUILDING.md) and [docs/guides/development/SCRIPTS.md](docs/guides/development/SCRIPTS.md).
+- **Networks / P2P**: Same **mainnet / testnet / creative** tables and **`network-data.json`** sources as [Option 2](#option-2-pre-built-binary-from-github-releases) above. **Local-only** runs: use `init` / `validate-genesis` / `start` without `--p2p.seeds` (genesis from `init`); context in [blockchain documentation](https://docs.infinitedrive.xyz/en/blockchain).
+- Resolve anything `./scripts/check_build_prerequisites.sh` reports before `make install`.
 - Ensure `$HOME/go/bin` is on your `PATH` after `make install`.
-- Broader build and test workflows: [docs in this repository](docs/guides/README.md) and [official documentation](https://docs.infinitedrive.xyz/en).
+- Build, migration and chain detail: [official documentation](https://docs.infinitedrive.xyz/en) and, for version upgrades, [docs/migrations/](docs/migrations/) in this repository.
 
 </details>
 

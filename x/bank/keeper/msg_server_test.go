@@ -9,8 +9,7 @@ import (
 	"github.com/cosmos/evm/x/bank/keeper"
 	evmbanktypes "github.com/cosmos/evm/x/bank/types"
 
-	storetypes "cosmossdk.io/store/types"
-
+	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
 	"github.com/cosmos/cosmos-sdk/testutil"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 	authtypes "github.com/cosmos/cosmos-sdk/x/auth/types"

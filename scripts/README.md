@@ -1,21 +1,13 @@
 # Scripts - Infinite Drive
 
 > **Copyright (c) 2025 Deep Thought Labs**  
-> Internal tooling and automation scripts for Infinite Drive.
+> Automation scripts for Infinite Drive.
 
 ## 📚 Documentation
 
-**All scripts documentation is now centralized in the main guides:**
-
-👉 **[docs/guides/development/SCRIPTS.md](../docs/guides/development/SCRIPTS.md)** - Complete scripts guide
-
-This guide includes:
-
-- All available scripts
-- When to use each script
-- What each script does
-- How to identify Deep Thought Labs scripts
-- Workflow examples
+- [README — build from source](../README.md#option-3-build-from-this-repository) (prerequisites step uses `check_build_prerequisites.sh`)
+- [Official documentation](https://docs.infinitedrive.xyz/en)
+- Upgrade notes: [docs/migrations/](../docs/migrations/) in this repository
 
 ## 🔍 Identifying Deep Thought Labs Scripts
 
@@ -39,12 +31,9 @@ grep -l "Deep Thought Labs" scripts/*.sh
 
 ## 📋 Quick Reference
 
-| Script | Purpose | Documentation |
-|-------|---------|---------------|
-| `check_build_prerequisites.sh` | Verify build prerequisites | [SCRIPTS.md](../docs/guides/development/SCRIPTS.md#1-check_build_prerequisitessh) |
-| `validate_customizations.sh` | Validate customizations | [SCRIPTS.md](../docs/guides/development/SCRIPTS.md#2-validate_customizationssh) |
-| `validate_token_config.sh` | Validate token configuration | [SCRIPTS.md](../docs/guides/development/SCRIPTS.md#3-validate_token_configsh) |
-| `infinite_health_check.sh` | Node health check | [SCRIPTS.md](../docs/guides/development/SCRIPTS.md#5-infinite_health_checksh) |
-| `list_all_customizations.sh` | List all customizations | [SCRIPTS.md](../docs/guides/development/SCRIPTS.md#5-list_all_customizationssh) |
+Before `make install`, run the prerequisite script from the repository root when you build from source.
 
-**For complete documentation, see [docs/guides/development/SCRIPTS.md](../docs/guides/development/SCRIPTS.md)**
+| Script | Purpose | Notes |
+|--------|---------|--------|
+| `check_build_prerequisites.sh` | Verify Docker, Go, Make, Git, and related tooling | Run from repository root: `./scripts/check_build_prerequisites.sh` |
+| `infinite_health_check.sh` | Node health check | See [official documentation](https://docs.infinitedrive.xyz/en) |

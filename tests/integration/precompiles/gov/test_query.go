@@ -320,7 +320,8 @@ func (s *PrecompileTestSuite) TestGetDeposit() {
 				s.Require().NoError(err)
 				s.Require().Equal(tc.expPropNumber, out.Deposit.ProposalId)
 				s.Require().Equal(common.BytesToAddress(depositor.Bytes()), out.Deposit.Depositor)
-				s.Require().Equal([]cmn.Coin{{Denom: "aatom", Amount: big.NewInt(100)}}, out.Deposit.Amount)
+				// Infinite fork: deposit return denom sigue el gas/base token de la red (p. ej. drop), no el literal upstream "aatom".
+				s.Require().Equal([]cmn.Coin{{Denom: s.network.GetBaseDenom(), Amount: big.NewInt(100)}}, out.Deposit.Amount)
 			} else {
 				s.Require().Error(err)
 				s.Require().Contains(err.Error(), tc.errContains)

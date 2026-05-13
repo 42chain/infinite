@@ -7,6 +7,7 @@ import (
 )
 
 func MustGetDefaultNodeHome() string {
+	// Infinite fork: node data dir name (upstream example uses ".evmd").
 	defaultNodeHome, err := clienthelpers.GetNodeHomeDirectory(".infinited")
 	if err != nil {
 		panic(err)

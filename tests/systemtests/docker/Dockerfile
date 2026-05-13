@@ -3,10 +3,13 @@
 # Run tests:  `make test-system-docker-reuse`
 #
 # Base must ship glibc >= legacy tarball needs (see root Makefile comment near test-system-docker).
+# GO_VERSION must match root go.mod `go` directive; Makefile passes --build-arg from go.mod.
 
-FROM golang:1.25-trixie
+ARG GO_VERSION=1.25.9
+FROM golang:${GO_VERSION}-trixie
 
 ENV DEBIAN_FRONTEND=noninteractive
+ENV GOTOOLCHAIN=auto
 
 RUN apt-get update -qq && \
 	apt-get install -y --no-install-recommends \

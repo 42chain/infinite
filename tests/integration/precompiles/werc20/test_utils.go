@@ -170,7 +170,6 @@ func GetAccountBalance(accounts []*AccountBalanceInfo, accountType AccountType) 
 
 // GetBalanceSnapshot gets complete balance information using grpcHandler
 func GetBalanceSnapshot(addr sdk.AccAddress, grpcHandler grpc.Handler) (*BalanceSnapshot, error) {
-	// Get integer balance (uatom)
 	intRes, err := grpcHandler.GetBalanceFromBank(addr, evmtypes.GetEVMCoinDenom())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get integer balance: %w", err)

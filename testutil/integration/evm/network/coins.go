@@ -1,3 +1,6 @@
+// Infinite fork (integration test network): cuando ExampleChainCoinInfo usa Denom distinto de ExtendedDenom
+// (p. ej. utest + atest), el ante y BankWrapper de x/vm debitan gas/msg.value en el denom extendido; hay que
+// prefundear ese denom en genesis además del nativo o MsgEthereumTx falla con insufficient funds. Ver WithChainID en config.go.
 package network
 
 import (
@@ -20,6 +23,9 @@ type ChainCoins struct {
 	// decimals of the base denom? Maybe not..
 	baseCoin *CoinInfo
 	evmCoin  *CoinInfo
+	// Infinite fork: denom extendido del VM (contabilidad en subunidades de 18 dec) cuando difiere del denom
+	// nativo EVM; createBalances debe incluirlo en DenomDecimalsMap para que el valor económico coincida con upstream.
+	extendedPrefundDenom string
 }
 
 // DefaultChainCoins returns the default values used for the ChainCoins in which
@@ -82,6 +88,12 @@ func (cc ChainCoins) DenomDecimalsMap() map[string]evmtypes.Decimals {
 	// Insert the evm denom if base and evm denom are different.
 	if !cc.IsBaseEqualToEVM() {
 		chainDenomDecimals[cc.EVMDenom()] = cc.EVMDecimals()
+	}
+	// Infinite fork: mismo valor nominal que el prefund nativo, expresado en 18 dec para ExtendedDenom.
+	if cc.extendedPrefundDenom != "" {
+		if _, ok := chainDenomDecimals[cc.extendedPrefundDenom]; !ok {
+			chainDenomDecimals[cc.extendedPrefundDenom] = evmtypes.EighteenDecimals
+		}
 	}
 	return chainDenomDecimals
 }

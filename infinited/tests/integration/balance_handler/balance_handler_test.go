@@ -1,23 +1,22 @@
 package balancehandler
 
 import (
-	"fmt"
 	"math/big"
 	"testing"
-
-	sdkmath "cosmossdk.io/math"
-
-	"github.com/cosmos/cosmos-sdk/types"
 
 	"github.com/stretchr/testify/suite"
 
 	"github.com/cosmos/evm"
 	"github.com/cosmos/evm/contracts"
 	"github.com/cosmos/evm/infinited/tests/integration"
-	testconstants "github.com/cosmos/evm/testutil/constants"
 	debugprecompile "github.com/cosmos/evm/infinited/tests/testdata/debug"
+	testconstants "github.com/cosmos/evm/testutil/constants"
 	evmibctesting "github.com/cosmos/evm/testutil/ibc"
 	testutiltypes "github.com/cosmos/evm/testutil/types"
+
+	sdkmath "cosmossdk.io/math"
+
+	"github.com/cosmos/cosmos-sdk/types"
 )
 
 // BalanceHandlerTestSuite tests the balance handler bug where recursive precompile calls
@@ -54,7 +53,7 @@ func (s *BalanceHandlerTestSuite) TestRecursivePrecompileCallsWithDebugPrecompil
 	s.Require().NoError(err)
 
 	a, b, c := evmApp.GetEVMKeeper().GetPrecompileInstance(ctx, debugPrec.Address())
-	fmt.Println(a, b, c)
+	s.T().Logf("Precompile instance: %v, %v, %v", a, b, c)
 
 	// Deploy caller contract
 	callerContract, err := contracts.LoadDebugPrecompileCaller()
@@ -91,15 +90,16 @@ func (s *BalanceHandlerTestSuite) TestRecursivePrecompileCallsWithDebugPrecompil
 	)
 	s.Require().NoError(err, "callback transaction should succeed")
 	s.Require().False(res.IsErr(), "callback should not fail: %s", res.Events)
-
 	s.Require().Equal(len(res.Events), 15, "callback should have 15 events")
-	debug_count := 0
+
+	debugCount := 0
 	for _, event := range res.Events {
 		if event.Type == "debug_precompile" {
-			debug_count++
+			debugCount++
 		}
 	}
-	s.Require().Equal(10, debug_count, "callback should have 1 debug precompile")
+
+	s.Require().Equal(10, debugCount, "callback should have 10 debug precompile events")
 
 	// Advance to next block to finalize state
 	s.chain.NextBlock()

@@ -54,7 +54,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        goarch: [amd64, arm64]
+        include:
+          - goarch: amd64
+          - goarch: arm64
 
     steps:
       - name: Checkout repository

@@ -297,7 +297,8 @@ func parseValidatorPowers(powers []int, numValidators int) ([]int64, error) {
 	return result, nil
 }
 
-// initTestnetFiles initializes testnet files for a testnet to be run in a separate process
+// initTestnetFiles initializes testnet files for a testnet to be run in a separate process.
+// Infinite fork: account balances use DefaultEVMExtendedDenom and DefaultBondDenom (drop), not upstream's fixed TEST_DENOM "atest".
 func initTestnetFiles(
 	clientCtx client.Context,
 	cmd *cobra.Command,
@@ -754,7 +755,6 @@ func NewTestNetworkFixture() sdknetwork.TestFixture {
 	app := evmd.NewExampleApp(
 		log.NewNopLogger(),
 		dbm.NewMemDB(),
-		nil,
 		true,
 		simtestutil.EmptyAppOptions{},
 	)
@@ -763,7 +763,6 @@ func NewTestNetworkFixture() sdknetwork.TestFixture {
 		return evmd.NewExampleApp(
 			log.NewNopLogger(),
 			dbm.NewMemDB(),
-			nil,
 			true,
 			simtestutil.EmptyAppOptions{},
 		)

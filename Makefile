@@ -24,9 +24,9 @@ HTTPS_GIT := git@github.com:deep-thought-labs/infinite.git
 DOCKER := $(or $(shell command -v docker 2>/dev/null),docker)
 
 # Chain-upgrade system tests (tests/systemtests/chainupgrade): legacy binary is always taken from
-# GitHub Releases for SYSTEMTEST_LEGACY_TAG (build-v05). No git checkout / local compile of the tag.
-# Release assets are Linux-only; on macOS use `make test-system-docker`.
-SYSTEMTEST_LEGACY_TAG ?= v0.1.10
+# GitHub Releases for SYSTEMTEST_LEGACY_TAG (`make build-legacy-systemtest-binary`; alias: `build-v05`).
+# No git checkout / local compile of the tag. Release assets are Linux-only; on macOS use `make test-system-docker`.
+SYSTEMTEST_LEGACY_TAG ?= v0.2.0
 SYSTEMTEST_LEGACY_REPO ?= deep-thought-labs/infinite
 SYSTEMTEST_LEGACY_ASSET_LINUX_AMD64 ?= infinite_Linux_x86_64.tar.gz
 SYSTEMTEST_LEGACY_ASSET_LINUX_ARM64 ?= infinite_Linux_ARM64.tar.gz
@@ -39,6 +39,9 @@ SYSTEMTEST_DOCKER_GOMOD_VOLUME ?= infinite-systemtest-gomod
 SYSTEMTEST_DOCKER_GOCACHE_VOLUME ?= infinite-systemtest-gocache
 
 export GO111MODULE = on
+
+# Root `go.mod` directive — drives Docker golang:${GO_MOD_VERSION}-trixie (see test-system-docker*).
+GO_MOD_VERSION ?= $(shell sed -n '/^go /s/^go //p' "$(CURDIR)/go.mod" 2>/dev/null | head -n1)
 
 ###############################################################################
 ###                            Submodule Settings                           ###
@@ -190,7 +193,7 @@ go.sum: go.mod
 
 vulncheck:
 	@go install golang.org/x/vuln/cmd/govulncheck@latest
-	@govulncheck ./...
+	@$(shell go env GOPATH)/bin/govulncheck ./...
 
 ###############################################################################
 ###                           Tests & Simulation                            ###
@@ -203,18 +206,42 @@ COVERPKG_EVM  := $(shell go list ./... | grep -v '/tests/e2e$$' | grep -v '/simu
 COVERPKG_ALL  := $(COVERPKG_EVM)
 COVERPKG_INFINITED := $(shell cd infinited && go list ./... | grep -v '/simulation' | paste -sd, -)
 COMMON_COVER_ARGS := -timeout=15m -covermode=atomic
+# Infinite fork: precompile integration suites under `tests/integration/precompiles` often exceed 15m with `-race`
+# on cold CI runners; wider timeout applies only to those two coverage targets (see test-unit-cover-*-precompiles).
+COMMON_COVER_ARGS_PRECOMPILE_INTEGRATION := -timeout=25m -covermode=atomic
+# `infinited/tests/integration` (excluding precompiles subtree) aggregates ante, mempool, RPC-heavy suites with `-race`;
+# CI runners often exceed 15m (same rationale as `make test` full infinited path below using -timeout=30m).
+COMMON_COVER_ARGS_INFINITED_INTEGRATION := -timeout=30m -covermode=atomic
 
-# Granular coverage blocks: root `tests/integration/*` vs rest, and `infinited/tests/integration/*` vs rest.
-# CI runs each block in a separate job (see .github/workflows/test.yml) so failures and timeouts are attributable.
+# Granular coverage blocks: root module vs `tests/integration`, `infinited` vs `infinited/tests/integration`,
+# and within each integration tree a split between `tests/integration/precompiles/*` and the rest.
+# Infinite fork: six blocks isolate heavyweight precompile suites for clearer CI attribution and timeouts.
+# CI runs each block in a separate job (see .github/workflows/test.yml).
 PACKAGES_EVM_CORE := $(shell go list ./... | grep -v '/tests/e2e$$' | grep -v '/simulation' | grep -v '/tests/integration')
-PACKAGES_EVM_INTEGRATION := $(shell go list ./... | grep '/tests/integration')
+PACKAGES_EVM_INTEGRATION := $(shell go list ./... | grep '/tests/integration' | grep -v '/tests/integration/precompiles')
+PACKAGES_EVM_INTEGRATION_PRECOMPILES := $(shell go list ./... | grep '/tests/integration/precompiles')
 PACKAGES_INFINITED_CORE := $(shell cd infinited && go list ./... | grep -v '/simulation' | grep -v '/tests/integration')
-PACKAGES_INFINITED_INTEGRATION := $(shell cd infinited && go list ./... | grep '/tests/integration')
+PACKAGES_INFINITED_INTEGRATION := $(shell cd infinited && go list ./... | grep '/tests/integration' | grep -v '/tests/integration/precompiles')
+PACKAGES_INFINITED_INTEGRATION_PRECOMPILES := $(shell cd infinited && go list ./... | grep '/tests/integration/precompiles')
 
 COVERAGE_EVM_CORE := coverage_evm_core.txt
 COVERAGE_EVM_INTEGRATION := coverage_evm_integration.txt
+COVERAGE_EVM_INTEGRATION_PRECOMPILES := coverage_evm_integration_precompiles.txt
 COVERAGE_INFINITED_CORE := coverage_infinited_core.txt
 COVERAGE_INFINITED_INTEGRATION := coverage_infinited_integration.txt
+COVERAGE_INFINITED_INTEGRATION_PRECOMPILES := coverage_infinited_integration_precompiles.txt
+
+# test-report-* LHS may `cd infinited`; anchor RHS to repo root so `go run` and logs/* resolve consistently.
+GO_TEST_REPORT_PKG := $(CURDIR)/scripts/cmd/go-test-report
+
+# Shared `go test` recipes (identical flags to test-unit-cover-*). test-report-* appends -json and pipes to go-test-report.
+# Must follow PACKAGES_* and COVERAGE_* (immediate := expansion).
+CMD_COVER_EVM_CORE := go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_ALL) -coverprofile=$(COVERAGE_EVM_CORE) $(PACKAGES_EVM_CORE)
+CMD_COVER_EVM_INTEGRATION := go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_ALL) -coverprofile=$(COVERAGE_EVM_INTEGRATION) $(PACKAGES_EVM_INTEGRATION)
+CMD_COVER_EVM_INTEGRATION_PRECOMPILES := go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS_PRECOMPILE_INTEGRATION) -coverpkg=$(COVERPKG_ALL) -coverprofile=$(COVERAGE_EVM_INTEGRATION_PRECOMPILES) $(PACKAGES_EVM_INTEGRATION_PRECOMPILES)
+CMD_COVER_INFINITED_CORE := cd $(INFINITED_DIR) && go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_INFINITED) -coverprofile=../$(COVERAGE_INFINITED_CORE) $(PACKAGES_INFINITED_CORE)
+CMD_COVER_INFINITED_INTEGRATION := cd $(INFINITED_DIR) && go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS_INFINITED_INTEGRATION) -coverpkg=$(COVERPKG_INFINITED) -coverprofile=../$(COVERAGE_INFINITED_INTEGRATION) $(PACKAGES_INFINITED_INTEGRATION)
+CMD_COVER_INFINITED_INTEGRATION_PRECOMPILES := cd $(INFINITED_DIR) && go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS_PRECOMPILE_INTEGRATION) -coverpkg=$(COVERPKG_INFINITED) -coverprofile=../$(COVERAGE_INFINITED_INTEGRATION_PRECOMPILES) $(PACKAGES_INFINITED_INTEGRATION_PRECOMPILES)
 
 TEST_PACKAGES := ./...
 TEST_TARGETS := test-unit test-evmd test-unit-cover test-race
@@ -231,29 +258,65 @@ test-infinited: ARGS=-timeout=15m
 test-infinited:
 	@cd infinited && go test -race -tags=test -mod=readonly $(ARGS) $(EXTRA_ARGS) $(PACKAGES_INFINITED)
 
-# Full local coverage: four blocks (parallel-safe as prerequisites of merge) then merge + filter + summary.
+# Full local coverage: six blocks (parallel-safe as prerequisites of merge) then merge + filter + summary.
 test-unit-cover: test-unit-cover-merge
 
 test-unit-cover-evm-core:
 	@echo "🔍 Coverage block: evm core (root module, excluding tests/integration)..."
-	@go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_ALL) -coverprofile=$(COVERAGE_EVM_CORE) $(PACKAGES_EVM_CORE)
+	@$(CMD_COVER_EVM_CORE)
 
 test-unit-cover-evm-integration:
-	@echo "🔍 Coverage block: evm integration (root tests/integration/*)..."
-	@go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_ALL) -coverprofile=$(COVERAGE_EVM_INTEGRATION) $(PACKAGES_EVM_INTEGRATION)
+	@echo "🔍 Coverage block: evm integration (root tests/integration/*, excluding precompiles subtree)..."
+	@$(CMD_COVER_EVM_INTEGRATION)
+
+test-unit-cover-evm-integration-precompiles:
+	@echo "🔍 Coverage block: evm integration precompiles (root tests/integration/precompiles/*)..."
+	@$(CMD_COVER_EVM_INTEGRATION_PRECOMPILES)
 
 test-unit-cover-infinited-core:
 	@echo "🔍 Coverage block: infinited core (excluding tests/integration)..."
-	@cd infinited && go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_INFINITED) -coverprofile=../$(COVERAGE_INFINITED_CORE) $(PACKAGES_INFINITED_CORE)
+	@$(CMD_COVER_INFINITED_CORE)
 
 test-unit-cover-infinited-integration:
-	@echo "🔍 Coverage block: infinited integration (infinited/tests/integration/*)..."
-	@cd infinited && go test -race -tags=test -mod=readonly $(COMMON_COVER_ARGS) -coverpkg=$(COVERPKG_INFINITED) -coverprofile=../$(COVERAGE_INFINITED_INTEGRATION) $(PACKAGES_INFINITED_INTEGRATION)
+	@echo "🔍 Coverage block: infinited integration (infinited/tests/integration/*, excluding precompiles subtree)..."
+	@$(CMD_COVER_INFINITED_INTEGRATION)
 
-test-unit-cover-merge: test-unit-cover-evm-core test-unit-cover-evm-integration test-unit-cover-infinited-core test-unit-cover-infinited-integration
+test-unit-cover-infinited-integration-precompiles:
+	@echo "🔍 Coverage block: infinited integration precompiles (infinited/tests/integration/precompiles/*)..."
+	@$(CMD_COVER_INFINITED_INTEGRATION_PRECOMPILES)
+
+# Enriched report: same `go test` recipe as test-unit-cover-* plus -json and scripts/cmd/go-test-report (writes logs/*.log).
+test-report-evm-core:
+	@echo "📋 Report block: evm core (same recipe as test-unit-cover-evm-core)..."
+	@bash -o pipefail -c '$(CMD_COVER_EVM_CORE) -json 2>&1 | ( cd "$(CURDIR)" && go run "$(GO_TEST_REPORT_PKG)" -log test-report-evm-core -tee=false -jsonl-out logs/test-report-evm-core.jsonl )'
+
+test-report-evm-integration:
+	@echo "📋 Report block: evm integration (same recipe as test-unit-cover-evm-integration)..."
+	@bash -o pipefail -c '$(CMD_COVER_EVM_INTEGRATION) -json 2>&1 | ( cd "$(CURDIR)" && go run "$(GO_TEST_REPORT_PKG)" -log test-report-evm-integration -tee=false -jsonl-out logs/test-report-evm-integration.jsonl )'
+
+test-report-evm-integration-precompiles:
+	@echo "📋 Report block: evm integration precompiles (same recipe as test-unit-cover-evm-integration-precompiles)..."
+	@bash -o pipefail -c '$(CMD_COVER_EVM_INTEGRATION_PRECOMPILES) -json 2>&1 | ( cd "$(CURDIR)" && go run "$(GO_TEST_REPORT_PKG)" -log test-report-evm-integration-precompiles -tee=false -jsonl-out logs/test-report-evm-integration-precompiles.jsonl )'
+
+test-report-infinited-core:
+	@echo "📋 Report block: infinited core (same recipe as test-unit-cover-infinited-core)..."
+	@bash -o pipefail -c '$(CMD_COVER_INFINITED_CORE) -json 2>&1 | ( cd "$(CURDIR)" && go run "$(GO_TEST_REPORT_PKG)" -log test-report-infinited-core -tee=false -jsonl-out logs/test-report-infinited-core.jsonl )'
+
+test-report-infinited-integration:
+	@echo "📋 Report block: infinited integration (same recipe as test-unit-cover-infinited-integration)..."
+	@bash -o pipefail -c '$(CMD_COVER_INFINITED_INTEGRATION) -json 2>&1 | ( cd "$(CURDIR)" && go run "$(GO_TEST_REPORT_PKG)" -log test-report-infinited-integration -tee=false -jsonl-out logs/test-report-infinited-integration.jsonl )'
+
+test-report-infinited-integration-precompiles:
+	@echo "📋 Report block: infinited integration precompiles (same recipe as test-unit-cover-infinited-integration-precompiles)..."
+	@bash -o pipefail -c '$(CMD_COVER_INFINITED_INTEGRATION_PRECOMPILES) -json 2>&1 | ( cd "$(CURDIR)" && go run "$(GO_TEST_REPORT_PKG)" -log test-report-infinited-integration-precompiles -tee=false -jsonl-out logs/test-report-infinited-integration-precompiles.jsonl )'
+
+test-report-all: test-report-evm-core test-report-evm-integration test-report-evm-integration-precompiles test-report-infinited-core test-report-infinited-integration test-report-infinited-integration-precompiles
+	@echo "📋 All six report blocks completed."
+
+test-unit-cover-merge: test-unit-cover-evm-core test-unit-cover-evm-integration test-unit-cover-evm-integration-precompiles test-unit-cover-infinited-core test-unit-cover-infinited-integration test-unit-cover-infinited-integration-precompiles
 	@echo "🔀 Merging coverage blocks into coverage.txt..."
 	@echo "mode: atomic" > coverage.txt
-	@grep -h -v '^mode:' $(COVERAGE_EVM_CORE) $(COVERAGE_EVM_INTEGRATION) $(COVERAGE_INFINITED_CORE) $(COVERAGE_INFINITED_INTEGRATION) >> coverage.txt
+	@grep -h -v '^mode:' $(COVERAGE_EVM_CORE) $(COVERAGE_EVM_INTEGRATION) $(COVERAGE_EVM_INTEGRATION_PRECOMPILES) $(COVERAGE_INFINITED_CORE) $(COVERAGE_INFINITED_INTEGRATION) $(COVERAGE_INFINITED_INTEGRATION_PRECOMPILES) >> coverage.txt
 	@echo "🧹 Filtering ignored files from coverage.txt..."
 	@grep -v -E '/cmd/|/client/|/proto/|/testutil/|/mocks/|/test_.*\.go:|\.pb\.go:|\.pb\.gw\.go:|/x/[^/]+/module\.go:|/scripts/|/ibc/testing/|/version/|\.md:|\.pulsar\.go:' coverage.txt > tmp_coverage.txt && mv tmp_coverage.txt coverage.txt
 	@echo "📊 Coverage summary:"
@@ -265,7 +328,10 @@ test-all:
 	@echo "🔍 Running evm module tests..."
 	@go test -race -tags=test -mod=readonly -timeout=15m $(PACKAGES_NOSIMULATION)
 	@echo "🔍 Running infinited module tests..."
-	@cd infinited && go test -race -tags=test -mod=readonly -timeout=15m $(PACKAGES_INFINITED)
+	# Infinite fork: infinited includes heavy integration suites that can (a) exceed 15m on cold caches with `-race`,
+	# and (b) deadlock/flake when multiple integration packages run concurrently (shared ports/processes).
+	# Run the infinited module tests serially (`-p=1`) and with a wider timeout to reduce spurious failures.
+	@cd infinited && go test -p=1 -race -tags=test -mod=readonly -timeout=30m $(PACKAGES_INFINITED)
 
 run-tests:
 ifneq (,$(shell which tparse 2>/dev/null))
@@ -284,8 +350,12 @@ test-solidity:
 	./scripts/run-solidity-tests.sh
 
 .PHONY: run-tests test test-all $(TEST_TARGETS) \
-	test-unit-cover-evm-core test-unit-cover-evm-integration \
-	test-unit-cover-infinited-core test-unit-cover-infinited-integration test-unit-cover-merge
+	test-unit-cover-evm-core test-unit-cover-evm-integration test-unit-cover-evm-integration-precompiles \
+	test-unit-cover-infinited-core test-unit-cover-infinited-integration test-unit-cover-infinited-integration-precompiles \
+	test-unit-cover-merge \
+	test-report-evm-core test-report-evm-integration test-report-evm-integration-precompiles \
+	test-report-infinited-core test-report-infinited-integration test-report-infinited-integration-precompiles \
+	test-report-all
 
 benchmark:
 	@go test -race -tags=test -mod=readonly -bench=. $(PACKAGES_NOSIMULATION)
@@ -529,16 +599,17 @@ test-rpc-compat:
 test-rpc-compat-stop:
 	cd tests/jsonrpc && docker compose down
 
-.PHONY: localnet-start localnet-stop localnet-build-env localnet-build-nodes test-rpc-compat test-rpc-compat-stop test-system test-system-docker test-system-docker-build test-system-docker-reuse build-v05 mocks
+.PHONY: localnet-start localnet-stop localnet-build-env localnet-build-nodes test-rpc-compat test-rpc-compat-stop test-system test-system-docker test-system-docker-build test-system-docker-reuse build-legacy-systemtest-binary build-v05 mocks
 
-test-system: build-v05 build
+test-system: build-legacy-systemtest-binary build
 	mkdir -p ./tests/systemtests/binaries/
 	cp "$(BUILDDIR)/$(EXAMPLE_BINARY)" ./tests/systemtests/binaries/evmd
 	cd tests/systemtests/Counter && forge build
 	$(MAKE) -C tests/systemtests test
 
 # Run system tests in Linux container (recommended on macOS when legacy artifacts are Linux-only).
-# Base image must ship glibc >= the release legacy binary (e.g. v0.1.10 may require GLIBC_2.38+);
+# Image tag golang:$(GO_MOD_VERSION)-trixie follows root go.mod; override GO_MOD_VERSION only if needed.
+# Base image must ship glibc >= the release legacy binary (e.g. v0.2.0 may require GLIBC_2.38+);
 # bookworm (2.36) is too old — use trixie (Debian 13) or newer.
 # Do not pin --platform linux/amd64 on Apple Silicon: QEMU user-mode breaks CometBFT P2P SecretConnection
 # (chacha20poly1305: message authentication failed), numPeers=0, timeout waiting for node start.
@@ -547,16 +618,18 @@ test-system: build-v05 build
 #   make test-system-docker-build   # once (or when Dockerfile / toolchain changes)
 #   make test-system-docker-reuse   # fast: same image + persisted Go mod/build caches
 test-system-docker:
-	@echo "🐳 Running system tests in Linux container (ephemeral; apt + Foundry each run)..."
+	@if [ -z "$(GO_MOD_VERSION)" ]; then echo "ERROR: empty GO_MOD_VERSION (could not read go directive from go.mod)" >&2; exit 1; fi
+	@echo "🐳 Running system tests in Linux container (ephemeral; apt + Foundry each run); Go $(GO_MOD_VERSION) ..."
 	@$(DOCKER) run --rm \
 		-v "$(CURDIR):/workspace" \
 		-w /workspace \
+		-e GOTOOLCHAIN=auto \
 		-e SYSTEMTEST_LEGACY_TAG="$(SYSTEMTEST_LEGACY_TAG)" \
 		-e SYSTEMTEST_LEGACY_REPO="$(SYSTEMTEST_LEGACY_REPO)" \
 		-e SYSTEMTEST_LEGACY_ASSET_LINUX_AMD64="$(SYSTEMTEST_LEGACY_ASSET_LINUX_AMD64)" \
 		-e SYSTEMTEST_LEGACY_ASSET_LINUX_ARM64="$(SYSTEMTEST_LEGACY_ASSET_LINUX_ARM64)" \
 		-e SYSTEMTEST_LEGACY_CHECKSUM_FILE="$(SYSTEMTEST_LEGACY_CHECKSUM_FILE)" \
-		golang:1.25-trixie bash -lc '\
+		"golang:$(GO_MOD_VERSION)-trixie" bash -lc '\
 			set -euo pipefail; \
 			apt-get update -qq; \
 			apt-get install -y --no-install-recommends build-essential git make curl ca-certificates jq tar xz-utils python3; \
@@ -571,8 +644,9 @@ test-system-docker:
 
 # Build reusable system-test image (apt + Foundry baked in). Rebuild when tests/systemtests/docker/Dockerfile changes.
 test-system-docker-build:
-	@echo "🐳 Building $(SYSTEMTEST_DOCKER_IMAGE) ..."
-	@$(DOCKER) build -t "$(SYSTEMTEST_DOCKER_IMAGE)" -f tests/systemtests/docker/Dockerfile tests/systemtests/docker
+	@if [ -z "$(GO_MOD_VERSION)" ]; then echo "ERROR: empty GO_MOD_VERSION (could not read go directive from go.mod)" >&2; exit 1; fi
+	@echo "🐳 Building $(SYSTEMTEST_DOCKER_IMAGE) (Go $(GO_MOD_VERSION)) ..."
+	@$(DOCKER) build --build-arg "GO_VERSION=$(GO_MOD_VERSION)" -t "$(SYSTEMTEST_DOCKER_IMAGE)" -f tests/systemtests/docker/Dockerfile tests/systemtests/docker
 
 # Run system tests using prebuilt image + named volumes for Go module and build caches.
 test-system-docker-reuse:
@@ -582,6 +656,7 @@ test-system-docker-reuse:
 		-v "$(SYSTEMTEST_DOCKER_GOMOD_VOLUME):/go/pkg/mod" \
 		-v "$(SYSTEMTEST_DOCKER_GOCACHE_VOLUME):/root/.cache/go-build" \
 		-w /workspace \
+		-e GOTOOLCHAIN=auto \
 		-e GOMODCACHE=/go/pkg/mod \
 		-e GOCACHE=/root/.cache/go-build \
 		-e SYSTEMTEST_LEGACY_TAG="$(SYSTEMTEST_LEGACY_TAG)" \
@@ -594,7 +669,8 @@ test-system-docker-reuse:
 		bash -lc 'set -euo pipefail; export PATH="/usr/local/go/bin:$$PATH"; go version; forge --version; make test-system TEST_ARGS="$$TEST_ARGS"'
 
 # Download legacy chain-upgrade binary from GitHub Releases only (matches .goreleaser archive names).
-build-v05:
+# Installs to tests/systemtests/binaries/v0.2/evmd (pre-upgrade line vs current-branch binary).
+build-legacy-systemtest-binary:
 	@set -e; \
 	case "$$(uname -s)" in \
 		Darwin) \
@@ -605,8 +681,8 @@ build-v05:
 			echo ""; \
 			exit 1 ;; \
 	esac; \
-	mkdir -p ./tests/systemtests/binaries/v0.5; \
-	target="./tests/systemtests/binaries/v0.5/evmd"; \
+	mkdir -p ./tests/systemtests/binaries/v0.2; \
+	target="./tests/systemtests/binaries/v0.2/evmd"; \
 	asset=""; \
 	case "$$(uname -m)" in \
 		x86_64|amd64) asset="$(SYSTEMTEST_LEGACY_ASSET_LINUX_AMD64)" ;; \
@@ -641,6 +717,9 @@ build-v05:
 	fi; \
 	chmod +x "$$target"; \
 	echo "✅ Legacy binary ready at $$target"
+
+# Deprecated alias — prefer build-legacy-systemtest-binary.
+build-v05: build-legacy-systemtest-binary
 
 mocks:
 	@echo "--> generating mocks"

@@ -35,7 +35,7 @@ func NewEVMGenesisState() *evmtypes.GenesisState {
 
 // NewErc20GenesisState returns the default genesis state for the ERC20 module.
 //
-// NOTE: By default, token pairs and native precompiles are empty.
+// Infinite fork / NOTE: By default, token pairs and native precompiles are empty.
 // These should be configured explicitly for each network (mainnet, testnet, etc.)
 // via the genesis JSON file or governance proposals after launch.
 func NewErc20GenesisState() *erc20types.GenesisState {

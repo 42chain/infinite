@@ -7,6 +7,7 @@ import (
 
 const (
 	// Bech32Prefix defines the Bech32 prefix used for accounts on the Infinite Drive blockchain.
+	// Infinite fork: upstream example chain uses "cosmos".
 	Bech32Prefix = "infinite"
 	// Bech32PrefixAccAddr defines the Bech32 prefix of an account's address.
 	Bech32PrefixAccAddr = Bech32Prefix

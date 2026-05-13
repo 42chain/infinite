@@ -50,8 +50,9 @@ jobs:
               - '.github/workflows/test.yml'
               - 'scripts/**'
 
-  # Four coverage blocks (fork): single matrix axis `block` keeps PR check names short, e.g. "test-unit-cover (evm-core)".
-  # See docs/guides/development/TESTING.md — Granular coverage blocks.
+  # Infinite fork: six coverage blocks (precompile integration split out from evm-integration / infinited-integration).
+  # Single matrix axis `block` keeps PR check names short, e.g. "test-unit-cover (evm-core)".
+  # See Infinite Handbook — guides/development/TESTING.md — Granular coverage blocks.
   test-unit-cover:
     name: test-unit-cover (${{ matrix.block }})
     needs: changes
@@ -60,7 +61,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        block: [evm-core, evm-integration, infinited-core, infinited-integration]
+        block:
+          - evm-core
+          - evm-integration
+          - evm-integration-precompiles
+          - infinited-core
+          - infinited-integration
+          - infinited-integration-precompiles
     steps:
       - uses: actions/setup-go@v5
         with:
@@ -79,6 +86,10 @@ jobs:
               echo "make_target=test-unit-cover-evm-integration" >> "$GITHUB_OUTPUT"
               echo "coverage_file=coverage_evm_integration.txt" >> "$GITHUB_OUTPUT"
               ;;
+            evm-integration-precompiles)
+              echo "make_target=test-unit-cover-evm-integration-precompiles" >> "$GITHUB_OUTPUT"
+              echo "coverage_file=coverage_evm_integration_precompiles.txt" >> "$GITHUB_OUTPUT"
+              ;;
             infinited-core)
               echo "make_target=test-unit-cover-infinited-core" >> "$GITHUB_OUTPUT"
               echo "coverage_file=coverage_infinited_core.txt" >> "$GITHUB_OUTPUT"
@@ -86,6 +97,10 @@ jobs:
             infinited-integration)
               echo "make_target=test-unit-cover-infinited-integration" >> "$GITHUB_OUTPUT"
               echo "coverage_file=coverage_infinited_integration.txt" >> "$GITHUB_OUTPUT"
+              ;;
+            infinited-integration-precompiles)
+              echo "make_target=test-unit-cover-infinited-integration-precompiles" >> "$GITHUB_OUTPUT"
+              echo "coverage_file=coverage_infinited_integration_precompiles.txt" >> "$GITHUB_OUTPUT"
               ;;
             *)
               echo "Unknown matrix.block: ${{ matrix.block }}" >&2
@@ -96,7 +111,7 @@ jobs:
         run: make ${{ steps.cov.outputs.make_target }}
       - uses: codecov/codecov-action@v5
         with:
-          file: ./${{ steps.cov.outputs.coverage_file }}
+          files: ./${{ steps.cov.outputs.coverage_file }}
           flags: ${{ matrix.block }}
           # We were getting a 500 error on codecov servers
           # so we decided to avoid blocking the CI if this fails
