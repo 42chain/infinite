@@ -17,8 +17,16 @@ import (
 	"github.com/cosmos/evm/x/vm/statedb"
 	"github.com/cosmos/evm/x/vm/types/mocks"
 
+	storetypes "github.com/cosmos/cosmos-sdk/store/v2/types"
+	"github.com/cosmos/cosmos-sdk/testutil"
 	sdk "github.com/cosmos/cosmos-sdk/types"
 )
+
+func newTestCtx() sdk.Context {
+	key := storetypes.NewKVStoreKey("statedb_test")
+	tkey := storetypes.NewTransientStoreKey("statedb_test_transient")
+	return testutil.DefaultContext(key, tkey).WithEventManager(sdk.NewEventManager())
+}
 
 var (
 	address       common.Address   = common.BigToAddress(big.NewInt(101))
@@ -58,7 +66,7 @@ func (suite *StateDBTestSuite) TestAccount() {
 			suite.Require().Empty(acct.Balance)
 			suite.Require().False(acct.HasCodeHash())
 
-			db = statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), keeper, emptyTxConfig)
+			db = statedb.New(newTestCtx(), keeper, emptyTxConfig)
 			suite.Require().Equal(true, db.Exist(address))
 			suite.Require().Equal(true, db.Empty(address))
 			suite.Require().Equal(common.U2560, db.GetBalance(address))
@@ -81,7 +89,7 @@ func (suite *StateDBTestSuite) TestAccount() {
 			suite.Require().NoError(db.Commit())
 
 			// SelfDestruct
-			db = statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), db.Keeper(), emptyTxConfig)
+			db = statedb.New(newTestCtx(), db.Keeper(), emptyTxConfig)
 			suite.Require().False(db.HasSelfDestructed(address))
 			db.SelfDestruct(address)
 
@@ -94,7 +102,7 @@ func (suite *StateDBTestSuite) TestAccount() {
 			suite.Require().NoError(db.Commit())
 
 			// not accessible from StateDB anymore
-			db = statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), db.Keeper(), emptyTxConfig)
+			db = statedb.New(newTestCtx(), db.Keeper(), emptyTxConfig)
 			suite.Require().False(db.Exist(address))
 
 			// and cleared in keeper too
@@ -107,9 +115,9 @@ func (suite *StateDBTestSuite) TestAccount() {
 	}
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
-			ctx := sdk.Context{}.WithEventManager(sdk.NewEventManager())
+			ctx := newTestCtx()
 			keeper := mocks.NewEVMKeeper()
-			db := statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), keeper, emptyTxConfig)
+			db := statedb.New(newTestCtx(), keeper, emptyTxConfig)
 			tc.malleate(ctx, db)
 		})
 	}
@@ -131,7 +139,7 @@ func (suite *StateDBTestSuite) TestDBError() {
 	}
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
-			db := statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), mocks.NewEVMKeeper(), emptyTxConfig)
+			db := statedb.New(newTestCtx(), mocks.NewEVMKeeper(), emptyTxConfig)
 			tc.malleate(db)
 			suite.Require().Error(db.Commit())
 		})
@@ -163,9 +171,9 @@ func (suite *StateDBTestSuite) TestBalance() {
 
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
-			ctx := sdk.Context{}.WithEventManager(sdk.NewEventManager())
+			ctx := newTestCtx()
 			keeper := mocks.NewEVMKeeper()
-			db := statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), keeper, emptyTxConfig)
+			db := statedb.New(newTestCtx(), keeper, emptyTxConfig)
 			tc.malleate(db)
 
 			// check dirty state
@@ -228,9 +236,9 @@ func (suite *StateDBTestSuite) TestState() {
 
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
-			ctx := sdk.Context{}.WithEventManager(sdk.NewEventManager())
+			ctx := newTestCtx()
 			keeper := mocks.NewEVMKeeper()
-			db := statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), keeper, emptyTxConfig)
+			db := statedb.New(newTestCtx(), keeper, emptyTxConfig)
 			tc.malleate(db)
 			suite.Require().NoError(db.Commit())
 
@@ -240,7 +248,7 @@ func (suite *StateDBTestSuite) TestState() {
 			}
 
 			// check ForEachStorage
-			db = statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), keeper, emptyTxConfig)
+			db = statedb.New(newTestCtx(), keeper, emptyTxConfig)
 			collected := CollectContractStorage(db)
 			if len(tc.expStates) > 0 {
 				suite.Require().Equal(tc.expStates, collected)
@@ -273,7 +281,7 @@ func (suite *StateDBTestSuite) TestCode() {
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
 			keeper := mocks.NewEVMKeeper()
-			db := statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), keeper, emptyTxConfig)
+			db := statedb.New(newTestCtx(), keeper, emptyTxConfig)
 			tc.malleate(db)
 
 			// check dirty state
@@ -284,7 +292,7 @@ func (suite *StateDBTestSuite) TestCode() {
 			suite.Require().NoError(db.Commit())
 
 			// check again
-			db = statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), keeper, emptyTxConfig)
+			db = statedb.New(newTestCtx(), keeper, emptyTxConfig)
 			suite.Require().Equal(tc.expCode, db.GetCode(address))
 			suite.Require().Equal(len(tc.expCode), db.GetCodeSize(address))
 			suite.Require().Equal(tc.expCodeHash, db.GetCodeHash(address))
@@ -338,7 +346,7 @@ func (suite *StateDBTestSuite) TestRevertSnapshot() {
 	}
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
-			ctx := sdk.Context{}.WithEventManager(sdk.NewEventManager())
+			ctx := newTestCtx()
 			keeper := mocks.NewEVMKeeper()
 
 			{
@@ -377,7 +385,7 @@ func (suite *StateDBTestSuite) TestNestedSnapshot() {
 	value1 := common.BigToHash(big.NewInt(1))
 	value2 := common.BigToHash(big.NewInt(2))
 
-	db := statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), mocks.NewEVMKeeper(), emptyTxConfig)
+	db := statedb.New(newTestCtx(), mocks.NewEVMKeeper(), emptyTxConfig)
 
 	rev1 := db.Snapshot()
 	db.SetState(address, key, value1)
@@ -394,7 +402,7 @@ func (suite *StateDBTestSuite) TestNestedSnapshot() {
 }
 
 func (suite *StateDBTestSuite) TestInvalidSnapshotId() {
-	db := statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), mocks.NewEVMKeeper(), emptyTxConfig)
+	db := statedb.New(newTestCtx(), mocks.NewEVMKeeper(), emptyTxConfig)
 	suite.Require().Panics(func() {
 		db.RevertToSnapshot(1)
 	})
@@ -484,7 +492,7 @@ func (suite *StateDBTestSuite) TestAccessList() {
 	}
 
 	for _, tc := range testCases {
-		db := statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), mocks.NewEVMKeeper(), emptyTxConfig)
+		db := statedb.New(newTestCtx(), mocks.NewEVMKeeper(), emptyTxConfig)
 		tc.malleate(db)
 	}
 }
@@ -496,7 +504,7 @@ func (suite *StateDBTestSuite) TestLog() {
 		txHash,
 		1,
 	)
-	db := statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), mocks.NewEVMKeeper(), txConfig)
+	db := statedb.New(newTestCtx(), mocks.NewEVMKeeper(), txConfig)
 	data := []byte("hello world")
 	db.AddLog(&ethtypes.Log{
 		Address:     address,
@@ -546,7 +554,7 @@ func (suite *StateDBTestSuite) TestRefund() {
 		}, 0, true},
 	}
 	for _, tc := range testCases {
-		db := statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), mocks.NewEVMKeeper(), emptyTxConfig)
+		db := statedb.New(newTestCtx(), mocks.NewEVMKeeper(), emptyTxConfig)
 		if !tc.expPanic {
 			tc.malleate(db)
 			suite.Require().Equal(tc.expRefund, db.GetRefund())
@@ -559,7 +567,7 @@ func (suite *StateDBTestSuite) TestRefund() {
 }
 
 func (suite *StateDBTestSuite) TestIterateStorage() {
-	ctx := sdk.Context{}.WithEventManager(sdk.NewEventManager())
+	ctx := newTestCtx()
 
 	key1 := common.BigToHash(big.NewInt(1))
 	value1 := common.BigToHash(big.NewInt(2))
@@ -567,7 +575,7 @@ func (suite *StateDBTestSuite) TestIterateStorage() {
 	value2 := common.BigToHash(big.NewInt(4))
 
 	keeper := mocks.NewEVMKeeper()
-	db := statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), keeper, emptyTxConfig)
+	db := statedb.New(newTestCtx(), keeper, emptyTxConfig)
 	db.SetState(address, key1, value1)
 	db.SetState(address, key2, value2)
 
@@ -623,7 +631,7 @@ func (suite *StateDBTestSuite) TestSetStorage() {
 	for _, tc := range testCases {
 		suite.Run(tc.name, func() {
 			keeper := mocks.NewEVMKeeper()
-			db := statedb.New(sdk.Context{}.WithEventManager(sdk.NewEventManager()), keeper, emptyTxConfig)
+			db := statedb.New(newTestCtx(), keeper, emptyTxConfig)
 			for k, v := range tc.prestate {
 				db.SetState(contract, k, v)
 			}
