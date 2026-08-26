@@ -26,6 +26,7 @@ Registered in code as `UpgradeNameInfiniteV02xToV030` in [`infinited/upgrades.go
 - **`UpgradeStoreLoader`:** no new mountable store keys are added for this plan versus fork **v0.2.x**; Hyperlane stores were introduced under the earlier plan `infinite-v0.1.10-to-v0.2.0`.
 
 ## Required Configuration Update for Each Validator Node
+
 ⚠️ Each validator must set mempool.type = "app" in config.toml.
 
 ```text
