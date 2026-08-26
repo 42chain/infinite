@@ -41,7 +41,7 @@ Use this **verbatim** in `MsgSoftwareUpgrade` proposals:
 infinite-v0.1.10-to-v0.2.0
 ```
 
-Registered in code as `UpgradeNameInfiniteV0110ToV020` in `[infinited/upgrades.go](../../infinited/upgrades.go)`. The Go package in that file is named `evmd` for historical reasons; the binary you build and run is `infinited`. Current CI exercises **[`v0_2_0_to_v0_3_0.go`](../../tests/systemtests/chainupgrade/v0_2_0_to_v0_3_0.go)** with plan **`infinite_v0.2.x_to_v0.3.0`** (same pattern: harness `upgradeName` matches governance).
+Registered in code as `UpgradeNameInfiniteV0110ToV020` in `[infinited/upgrades.go](../../infinited/upgrades.go)`. Current CI exercises **[`v0_3_0_to_v0_3_1.go`](../../tests/systemtests/chainupgrade/v0_3_0_to_v0_3_1.go)** with plan **`infinite_v0.3.0_to_v0.3.1`**.
 
 ## What the handler does today
 
@@ -110,7 +110,7 @@ Read this as a **checklist**. Replace **H** with the height chosen in the passed
 
 ## Example governance proposal (JSON)
 
-Below is a **template** aligned with how `TestChainUpgrade` submits an upgrade (same JSON shape as [`v0_2_0_to_v0_3_0.go`](../../tests/systemtests/chainupgrade/v0_2_0_to_v0_3_0.go); substitute **`plan.name`** with **`infinite-v0.1.10-to-v0.2.0`** for this plan). Adjust **deposit**, **title**, **summary**, **metadata**, fees, and **height** for your network.
+Below is a **template** aligned with how `TestChainUpgrade` submits an upgrade (same JSON shape as [`v0_3_0_to_v0_3_1.go`](../../tests/systemtests/chainupgrade/v0_3_0_to_v0_3_1.go); substitute **`plan.name`** with **`infinite-v0.1.10-to-v0.2.0`** for this plan).
 
 **1. Obtain the governance module address** (chain-specific):
 

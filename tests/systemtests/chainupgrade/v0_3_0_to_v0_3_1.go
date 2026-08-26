@@ -31,8 +31,8 @@ const (
 	// Keep this modest (not ~100): after PASSED the chain is often ~height 15–25; needing 80+ more
 	// blocks stresses Docker/CI and makes failures hard to distinguish from a stalled validator set.
 	upgradeHeight int64 = 45
-	// Must match UpgradeName / UpgradeNameInfiniteV02xToV030 in infinited/upgrades.go (same string as production governance).
-	upgradeName = "infinite_v0.2.x_to_v0.3.0"
+	// Must match UpgradeName / UpgradeNameInfiniteV030ToV031 in infinited/upgrades.go (same string as production governance).
+	upgradeName = "infinite_v0.3.0_to_v0.3.1"
 
 	// legacyHaltHeight caps the legacy node; must stay well above upgradeHeight (safety net only;
 	// the real stop for the legacy binary is upgradeHeight via x/upgrade).
@@ -51,14 +51,14 @@ const (
 
 // RunChainUpgrade exercises an on-chain software upgrade using the injected shared suite.
 //
-// Genesis path (option A): after the legacy binary produces testnet init-files, we apply
+// Genesis path (Infinite fork — see infinite-handbook CHAIN_UPGRADE_SYSTEM_TEST.md): after the
+// legacy binary (GitHub Release v0.3.0) produces testnet init-files, we apply
 // scripts/customize_genesis.sh with --network upgrade-test (see scripts/genesis-configs/upgrade-test.json).
-// The script aligns bank/gov/EVM/staking/mint to `drop` but leaves legacy gentx in `genutil.gen_txs`
-// (signed for `stake`) inconsistent with the new bond denom. We therefore:
+// testnet init-files uses BasicModuleManager.DefaultGenesis (gov deposit denom stake); customize_genesis
+// aligns bank/gov/EVM/staking/mint to `drop`. Embedded gentx may still be signed for stake, so we:
 //  1. Read each validator self-delegation amount from the embedded gentx (numeric amount only).
 //  2. Clear `app_state.genutil.gen_txs` (requires jq).
-//  3. Replicate genesis to every node, run `evmd genesis gentx` per validator with the same amounts in `drop`,
-//     matching testnet commission / moniker / p2p memo inputs.
+//  3. Replicate genesis to every node, run `evmd genesis gentx` per validator with the same amounts in `drop`.
 //  4. Place all gentx JSON under node0's config/gentx and run `evmd genesis collect-gentxs --home node0`.
 //  5. Copy the final genesis.json from node0 to the other validators.
 //
@@ -69,16 +69,12 @@ func RunChainUpgrade(t *testing.T, base *suite.BaseTestSuite) {
 	base.SetupTest(t)
 	sut := base.SystemUnderTest
 
-	// Scenario:
-	// start a legacy chain with some state
-	// when a chain upgrade proposal is executed
-	// then the chain upgrades successfully
 	sut.StopChain()
 
 	currentBranchBinary := sut.ExecBinary()
 	currentInitializer := sut.TestnetInitializer()
 
-	legacyBinary := systest.WorkDir + "/binaries/v0.2/evmd"
+	legacyBinary := systest.WorkDir + "/binaries/v0.3/evmd"
 	systest.Sut.SetExecBinary(legacyBinary)
 	systest.Sut.SetTestnetInitializer(systest.InitializerWithBinary(legacyBinary, systest.Sut))
 	systest.Sut.SetupChain()
@@ -101,18 +97,18 @@ func RunChainUpgrade(t *testing.T, base *suite.BaseTestSuite) {
 	copyCustomizedGenesisToAllNodes(t, sut)
 	regenerateGentxsWithBaseDenom(t, sut, legacyBinary, selfDelegation)
 	copyCustomizedGenesisToAllNodes(t, sut)
-	// SetupChain only copies node0's keyring to testnet/keyring-test; CLIWrapper uses that dir as --home.
-	// Merge every validator keyring so GetKeyAddr("node1").. work for gov votes (matches ResetChain's restoreOriginalKeyring).
 	mergeAllValidatorKeyringsForCLI(t, sut)
 	sut.MarkDirty()
 
-	sut.StartChain(t, fmt.Sprintf("--halt-height=%d", legacyHaltHeight), "--chain-id=local-4221", "--minimum-gas-prices=0.00"+clients.NativeBaseDenom)
+	// v0.3.x requires Krakatoa (mempool.type=app); SetupChain leaves Comet at default flood.
+	base.ModifyCometMempool(t, "app")
+
+	sut.StartChain(t, fmt.Sprintf("--halt-height=%d", legacyHaltHeight), "--chain-id="+chainUpgradeChainID, "--minimum-gas-prices=0.00"+clients.NativeBaseDenom)
 
 	cli := systest.NewCLIWrapper(t, sut, systest.Verbose)
 	govAddr := sdk.AccAddress(address.Module("gov")).String()
 	depositCoin := "100000000" + clients.NativeBaseDenom
 	feeCoin := "10000000000000000000" + clients.NativeBaseDenom
-	// submit upgrade proposal
 	proposal := fmt.Sprintf(`
 {
  "messages": [
@@ -132,19 +128,21 @@ func RunChainUpgrade(t *testing.T, base *suite.BaseTestSuite) {
 }`, govAddr, upgradeName, upgradeHeight, depositCoin)
 	rsp := cli.SubmitGovProposal(proposal, "--fees="+feeCoin, "--from=node0")
 	systest.RequireTxSuccess(t, rsp)
-	raw := cli.CustomQuery("q", "gov", "proposals", "--depositor", cli.GetKeyAddr("node0"))
+	depositor := parseKeysShowAddress(cli.Keys("keys", "show", "node0", "-a"))
+	require.NotEmpty(t, depositor, "keys show node0 -a for gov depositor query")
+	raw := cli.CustomQuery("q", "gov", "proposals", "--depositor", depositor)
 	proposals := gjson.Get(raw, "proposals.#.id").Array()
 	require.NotEmpty(t, proposals, raw)
 	proposalID := proposals[len(proposals)-1].String()
 
 	for i := range sut.NodesCount() {
 		sut.Logf("Voting: validator %d\n", i)
-		rsp := cli.Run("tx", "gov", "vote", proposalID, "yes", "--fees="+feeCoin, "--from", cli.GetKeyAddr(fmt.Sprintf("node%d", i)))
+		voter := parseKeysShowAddress(cli.Keys("keys", "show", fmt.Sprintf("node%d", i), "-a"))
+		require.NotEmpty(t, voter, "keys show node%d -a", i)
+		rsp := cli.Run("tx", "gov", "vote", proposalID, "yes", "--fees="+feeCoin, "--from", voter)
 		systest.RequireTxSuccess(t, rsp)
 	}
 
-	// Tally runs after voting_end (not when the last vote lands). Wait explicitly so we do not assert PASSED
-	// at upgradeHeight-1 while the proposal is still PROPOSAL_STATUS_VOTING_PERIOD.
 	awaitGovProposalStatus(t, cli, proposalID, "PROPOSAL_STATUS_PASSED", 2*time.Minute)
 
 	awaitCometBlockHeightHTTP(t, defaultSutRPCAddr, upgradeHeight-1, awaitPreUpgradeHeightDeadline)
@@ -160,33 +158,25 @@ func RunChainUpgrade(t *testing.T, base *suite.BaseTestSuite) {
 	t.Log("Upgrade height was reached. Upgrading chain")
 	sut.SetExecBinary(currentBranchBinary)
 	sut.SetTestnetInitializer(currentInitializer)
-	// SetupChain() above regenerated Comet config with default mempool.type=flood; Krakatoa + ValidateCrossConfig require app.
 	base.ModifyCometMempool(t, "app")
-	sut.StartChain(t, "--chain-id=local-4221", "--mempool.max-txs=0")
+	sut.StartChain(t, "--chain-id="+chainUpgradeChainID, "--mempool.max-txs=0")
 
 	require.Equal(t, upgradeHeight+1, sut.CurrentHeight())
 
-	// smoke test to make sure the chain still functions.
 	cli = systest.NewCLIWrapper(t, sut, systest.Verbose)
-	// Do not use GetKeyAddr here: CombinedOutput merges stderr (duplicate proto warnings) into
-	// keys show output and corrupts the address string when parsed as a single line.
 	show0 := cli.Keys("keys", "show", "node0", "-a")
 	show1 := cli.Keys("keys", "show", "node1", "-a")
 	from := parseKeysShowAddress(show0)
 	to := parseKeysShowAddress(show1)
 	require.NotEmpty(t, from, "keys show node0 -a: %s", show0)
 	require.NotEmpty(t, to, "keys show node1 -a: %s", show1)
-	// cli.Run → AwaitTxCommitted runs RequireTxSuccess on CombinedOutput before parsing txhash;
-	// stderr from infinited pollutes JSON — sanitize broadcast + each query tx response (awaitTxCommittedWithStrip).
-	rawTx, ok := cli.RunOnly("tx", "bank", "send", from, to, "1"+clients.NativeBaseDenom, "--from=node0", "--fees="+feeCoin, "--chain-id=local-4221")
+	rawTx, ok := cli.RunOnly("tx", "bank", "send", from, to, "1"+clients.NativeBaseDenom, "--from=node0", "--fees="+feeCoin, "--chain-id="+chainUpgradeChainID)
 	require.True(t, ok, rawTx)
 	got, committed := awaitTxCommittedWithStrip(t, cli, sut, rawTx)
 	require.True(t, committed, got)
 	systest.RequireTxSuccess(t, stripLeadingNoiseBeforeJSON(got))
 }
 
-// gentxSelfDelegationCoins returns one "amount" string per validator gentx (e.g. 100... + NativeBaseDenom),
-// parsed from the legacy embedded gentx before those txs are cleared.
 func gentxSelfDelegationCoins(t *testing.T, genesisJSON []byte, n int) []string {
 	t.Helper()
 	out := make([]string, n)
@@ -261,17 +251,12 @@ func regenerateGentxsWithBaseDenom(t *testing.T, sut *systest.SystemUnderTest, l
 	require.NoError(t, collectErr, "genesis collect-gentxs: %s", string(collectOut))
 }
 
-// cometStatusHTTPURL maps the systemtests RPC address (tcp://host:port) to a plain HTTP /status URL.
 func cometStatusHTTPURL(rpcTCP string) string {
 	s := strings.TrimPrefix(rpcTCP, "tcp://")
 	s = strings.ReplaceAll(s, "localhost", "127.0.0.1")
 	return "http://" + s + "/status"
 }
 
-// awaitCometBlockHeightHTTP polls GET /status over HTTP until LatestBlockHeight >= target.
-// We avoid a second Comet RPC websocket client here: the shared suite already holds a websocket
-// subscription to node0; an extra client has been observed to correlate with stalled height in CI.
-// Plain HTTP polling does not contend with that subscription path.
 func awaitCometBlockHeightHTTP(t *testing.T, rpcTCP string, target int64, deadline time.Duration) {
 	t.Helper()
 	url := cometStatusHTTPURL(rpcTCP)
@@ -310,8 +295,6 @@ func awaitGovProposalStatus(t *testing.T, cli *systest.CLIWrapper, proposalID, w
 			return
 		}
 		require.NotEqual(t, "PROPOSAL_STATUS_REJECTED", st, "proposal rejected: %s", raw)
-		// Avoid sut.AwaitNextBlock: it enforces the global --wait-time (e.g. ~18s) and fails if the
-		// next block is slow; the chain keeps producing blocks while we poll.
 		time.Sleep(3 * time.Second)
 	}
 	raw := cli.CustomQuery("q", "gov", "proposal", proposalID)
@@ -329,7 +312,6 @@ func copyCustomizedGenesisToAllNodes(t *testing.T, sut *systest.SystemUnderTest)
 	}
 }
 
-// cliSharedKeyringDir is the testnet-level keyring directory used by systemtests.CLIWrapper (--home testnet).
 func cliSharedKeyringDir(sut *systest.SystemUnderTest) string {
 	return filepath.Join(filepath.Dir(filepath.Dir(sut.NodeDir(0))), "keyring-test")
 }

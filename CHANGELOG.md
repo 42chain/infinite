@@ -11,6 +11,13 @@
 
 ## Infinite Drive — Changelog track
 
+## UNRELEASED
+
+Follow [infinite_v0.3.0_to_v0.3.1.md](docs/migrations/infinite_v0.3.0_to_v0.3.1.md) for upgrade instructions.
+
+- **Cosmos EVM alignment**: Security patch synchronized with upstream **Cosmos EVM v0.7.2** (StateDB balance hardening and related fixes).
+- **On-chain upgrade plan**: `infinite_v0.3.0_to_v0.3.1` — handler in `infinited/upgrades.go`; system-test baseline **`v0.3.0`**.
+
 ## v0.3.0
 
 Follow [infinite_v0.2.x_to_v0.3.0.md](docs/migrations/infinite_v0.2.x_to_v0.3.0.md) for upgrade instructions.
@@ -80,7 +87,7 @@ Follow [infinite_v0.1.10_to_v0.2.0.md](docs/migrations/infinite_v0.1.10_to_v0.2.
 
 ### OPERATIONAL NOTES
 
-- When running chain upgrade system tests, **`v0.2.0`** is the default legacy baseline (`SYSTEMTEST_LEGACY_TAG` in the root `Makefile`; release must exist on GitHub with Linux archives + `checksums.txt`).
+- When running chain upgrade system tests, **`v0.3.0`** is the default legacy baseline (`SYSTEMTEST_LEGACY_TAG` in the root `Makefile`; release must exist on GitHub with Linux archives + `checksums.txt`).
 
 ---
 

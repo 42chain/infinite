@@ -18,13 +18,18 @@ const (
 	// catching up through that height). MsgSoftwareUpgrade name must match exactly.
 	UpgradeNameInfiniteV0110ToV020 = "infinite-v0.1.10-to-v0.2.0"
 
-	// UpgradeNameInfiniteV02xToV030 is the active plan for operators moving from fork line v0.2.x
-	// to v0.3.0 (cosmos-evm base aligned with upstream v0.7.0). Use in governance and TestChainUpgrade.
+	// UpgradeNameInfiniteV02xToV030 is the historical plan for operators who upgraded from fork v0.2.x
+	// to v0.3.0 (cosmos-evm base aligned with upstream v0.7.0). Remains registered for chain replay.
 	UpgradeNameInfiniteV02xToV030 = "infinite_v0.2.x_to_v0.3.0"
 
-	// UpgradeName is the current governance-facing plan string (same as UpgradeNameInfiniteV02xToV030).
-	// Historical plan UpgradeNameInfiniteV0110ToV020 remains registered for state replay.
-	UpgradeName = UpgradeNameInfiniteV02xToV030
+	// UpgradeNameInfiniteV030ToV031 is the active plan for operators moving from fork release v0.3.0
+	// to v0.3.1 (cosmos-evm base aligned with upstream v0.7.2 security patch). Use in governance
+	// and TestChainUpgrade.
+	UpgradeNameInfiniteV030ToV031 = "infinite_v0.3.0_to_v0.3.1"
+
+	// UpgradeName is the current governance-facing plan string (same as UpgradeNameInfiniteV030ToV031).
+	// Historical plans remain registered for state replay.
+	UpgradeName = UpgradeNameInfiniteV030ToV031
 )
 
 func (app EVMD) RegisterUpgradeHandlers() {
@@ -36,6 +41,7 @@ func (app EVMD) RegisterUpgradeHandlers() {
 
 	app.UpgradeKeeper.SetUpgradeHandler(UpgradeNameInfiniteV0110ToV020, upgradeHandler)
 	app.UpgradeKeeper.SetUpgradeHandler(UpgradeNameInfiniteV02xToV030, upgradeHandler)
+	app.UpgradeKeeper.SetUpgradeHandler(UpgradeNameInfiniteV030ToV031, upgradeHandler)
 
 	upgradeInfo, err := app.UpgradeKeeper.ReadUpgradeInfoFromDisk()
 	if err != nil {
@@ -51,5 +57,6 @@ func (app EVMD) RegisterUpgradeHandlers() {
 		}
 		app.SetStoreLoader(upgradetypes.UpgradeStoreLoader(upgradeInfo.Height, &storeUpgrades))
 	}
-	// UpgradeNameInfiniteV02xToV030: no new KVStoreKey mounts vs fork v0.2.x; only RunMigrations in the handler.
+	// UpgradeNameInfiniteV02xToV030 and UpgradeNameInfiniteV030ToV031: no new KVStoreKey mounts;
+	// only RunMigrations in the handler.
 }

@@ -26,7 +26,7 @@ DOCKER := $(or $(shell command -v docker 2>/dev/null),docker)
 # Chain-upgrade system tests (tests/systemtests/chainupgrade): legacy binary is always taken from
 # GitHub Releases for SYSTEMTEST_LEGACY_TAG (`make build-legacy-systemtest-binary`; alias: `build-v05`).
 # No git checkout / local compile of the tag. Release assets are Linux-only; on macOS use `make test-system-docker`.
-SYSTEMTEST_LEGACY_TAG ?= v0.2.0
+SYSTEMTEST_LEGACY_TAG ?= v0.3.0
 SYSTEMTEST_LEGACY_REPO ?= deep-thought-labs/infinite
 SYSTEMTEST_LEGACY_ASSET_LINUX_AMD64 ?= infinite_Linux_x86_64.tar.gz
 SYSTEMTEST_LEGACY_ASSET_LINUX_ARM64 ?= infinite_Linux_ARM64.tar.gz
@@ -669,7 +669,7 @@ test-system-docker-reuse:
 		bash -lc 'set -euo pipefail; export PATH="/usr/local/go/bin:$$PATH"; go version; forge --version; make test-system TEST_ARGS="$$TEST_ARGS"'
 
 # Download legacy chain-upgrade binary from GitHub Releases only (matches .goreleaser archive names).
-# Installs to tests/systemtests/binaries/v0.2/evmd (pre-upgrade line vs current-branch binary).
+# Installs to tests/systemtests/binaries/v0.3/evmd (pre-upgrade line vs current-branch binary).
 build-legacy-systemtest-binary:
 	@set -e; \
 	case "$$(uname -s)" in \
@@ -681,8 +681,8 @@ build-legacy-systemtest-binary:
 			echo ""; \
 			exit 1 ;; \
 	esac; \
-	mkdir -p ./tests/systemtests/binaries/v0.2; \
-	target="./tests/systemtests/binaries/v0.2/evmd"; \
+	mkdir -p ./tests/systemtests/binaries/v0.3; \
+	target="./tests/systemtests/binaries/v0.3/evmd"; \
 	asset=""; \
 	case "$$(uname -m)" in \
 		x86_64|amd64) asset="$(SYSTEMTEST_LEGACY_ASSET_LINUX_AMD64)" ;; \

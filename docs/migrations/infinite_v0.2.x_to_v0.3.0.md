@@ -1,5 +1,6 @@
 # Infinite Drive — software upgrade `infinite_v0.2.x_to_v0.3.0`
 
+> **Historical plan:** This guide remains the reference for **`infinite_v0.2.x_to_v0.3.0`** (chain replay and archives). To upgrade from **fork v0.3.0** to **v0.3.1**, use [`infinite_v0.3.0_to_v0.3.1.md`](./infinite_v0.3.0_to_v0.3.1.md).
 
 ## Scope
 
@@ -17,7 +18,7 @@ Copy the following string **exactly** (verbatim) into `MsgSoftwareUpgrade` propo
 infinite_v0.2.x_to_v0.3.0
 ```
 
-Registered in code as `UpgradeNameInfiniteV02xToV030` and **`UpgradeName`** in [`infinited/upgrades.go`](../../infinited/upgrades.go). The system test [`tests/systemtests/chainupgrade/v0_2_0_to_v0_3_0.go`](../../tests/systemtests/chainupgrade/v0_2_0_to_v0_3_0.go) uses the same string.
+Registered in code as `UpgradeNameInfiniteV02xToV030` in [`infinited/upgrades.go`](../../infinited/upgrades.go). The system test [`tests/systemtests/chainupgrade/v0_3_0_to_v0_3_1.go`](../../tests/systemtests/chainupgrade/v0_3_0_to_v0_3_1.go) exercises the current plan **`infinite_v0.3.0_to_v0.3.1`** (same harness pattern: `upgradeName` matches governance).
 
 ## What the handler does
 
