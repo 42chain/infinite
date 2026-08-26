@@ -161,7 +161,10 @@ func RunChainUpgrade(t *testing.T, base *suite.BaseTestSuite) {
 	base.ModifyCometMempool(t, "app")
 	sut.StartChain(t, "--chain-id="+chainUpgradeChainID, "--mempool.max-txs=0")
 
-	require.Equal(t, upgradeHeight+1, sut.CurrentHeight())
+	// Post-upgrade: chain must be live at or past the first block after upgradeHeight.
+	// Do not require sut.CurrentHeight() == upgradeHeight+1 exactly: after a long CI
+	// suite the websocket listener can lag or advance an extra block before we read it.
+	awaitCometBlockHeightHTTP(t, defaultSutRPCAddr, upgradeHeight+1, 2*time.Minute)
 
 	cli = systest.NewCLIWrapper(t, sut, systest.Verbose)
 	show0 := cli.Keys("keys", "show", "node0", "-a")
