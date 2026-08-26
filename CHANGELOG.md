@@ -13,6 +13,8 @@
 
 ## UNRELEASED
 
+## v0.3.1
+
 Follow [infinite_v0.3.0_to_v0.3.1.md](docs/migrations/infinite_v0.3.0_to_v0.3.1.md) for upgrade instructions.
 
 - **Cosmos EVM alignment**: Security patch synchronized with upstream **Cosmos EVM v0.7.2** (StateDB balance hardening and related fixes).
