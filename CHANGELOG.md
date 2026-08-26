@@ -11,6 +11,15 @@
 
 ## Infinite Drive — Changelog track
 
+## UNRELEASED
+
+## v0.3.1
+
+Follow [infinite_v0.3.0_to_v0.3.1.md](docs/migrations/infinite_v0.3.0_to_v0.3.1.md) for upgrade instructions.
+
+- **Cosmos EVM alignment**: Security patch synchronized with upstream **Cosmos EVM v0.7.2** (StateDB balance hardening and related fixes).
+- **On-chain upgrade plan**: `infinite_v0.3.0_to_v0.3.1` — handler in `infinited/upgrades.go`; system-test baseline **`v0.3.0`**.
+
 ## v0.3.0
 
 Follow [infinite_v0.2.x_to_v0.3.0.md](docs/migrations/infinite_v0.2.x_to_v0.3.0.md) for upgrade instructions.
@@ -80,7 +89,7 @@ Follow [infinite_v0.1.10_to_v0.2.0.md](docs/migrations/infinite_v0.1.10_to_v0.2.
 
 ### OPERATIONAL NOTES
 
-- When running chain upgrade system tests, **`v0.2.0`** is the default legacy baseline (`SYSTEMTEST_LEGACY_TAG` in the root `Makefile`; release must exist on GitHub with Linux archives + `checksums.txt`).
+- When running chain upgrade system tests, **`v0.3.0`** is the default legacy baseline (`SYSTEMTEST_LEGACY_TAG` in the root `Makefile`; release must exist on GitHub with Linux archives + `checksums.txt`).
 
 ---
 
@@ -99,6 +108,22 @@ Follow [infinite_v0.1.10_to_v0.2.0.md](docs/migrations/infinite_v0.1.10_to_v0.2.
 ### FEATURES
 
 ### BUG FIXES
+
+## v0.7.2
+
+### IMPROVEMENTS
+
+- [\#1243](https://github.com/cosmos/evm/pull/1243) Deploy contracts from an EOA rather than a module account in the test helpers. It is also now required: contract creation bumps the sender's nonce, `SetAccount` persists nonce and balance together, and the EVM commit path may not write a module account's balance.
+
+## v0.7.1
+
+### IMPROVEMENTS
+
+- [\#1239](https://github.com/cosmos/evm/pull/1239) Validate ICS-20 acknowledgement encoding in the erc20 IBC v2 middleware.
+
+### BUG FIXES
+
+- [\#1223](https://github.com/cosmos/evm/pull/1223) Reject EVM txs below the base fee at mempool insert instead of silently queuing them.
 
 ## v0.7.0
 

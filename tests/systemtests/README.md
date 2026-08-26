@@ -6,14 +6,14 @@ The systemtests suite is an end-to-end test suite that runs the evmd process and
 
 ## Preparation
 
-`make test-system` builds the **current branch** as `tests/systemtests/binaries/evmd` and downloads the **legacy** chain-upgrade binary from **GitHub Releases** (default tag **`v0.2.0`**, repo `deep-thought-labs/infinite`) into **`tests/systemtests/binaries/v0.2/evmd`** via **`make build-legacy-systemtest-binary`** (deprecated alias: **`build-v05`**). There is **no** `git checkout` of the old tag; the baseline always comes from release artifacts + `checksums.txt`.
+`make test-system` builds the **current branch** as `tests/systemtests/binaries/evmd` and downloads the **legacy** chain-upgrade binary from **GitHub Releases** (default tag **`v0.3.0`**, repo `deep-thought-labs/infinite`) into **`tests/systemtests/binaries/v0.3/evmd`** via **`make build-legacy-systemtest-binary`** (deprecated alias: **`build-v05`**). There is **no** `git checkout` of the old tag; the baseline always comes from release artifacts + `checksums.txt`.
 
 - **Linux:** `make test-system` (needs `curl`, `shasum` / SHA-256 tooling as provided by the Makefile on Linux).
 - **macOS:** release archives are Linux-only; use Docker (see below).
 
 `make test-system-docker` uses Docker’s **default Linux platform for your machine** (e.g. `linux/arm64` on Apple Silicon). **Do not** add `--platform linux/amd64` in the Makefile for that target on ARM Macs: running the node binary under QEMU breaks CometBFT P2P handshakes (`chacha20poly1305: message authentication failed`), leaves `numPeers=0`, and tests fail with `timeout waiting for node start`.
 
-Override the release tag if needed: `make SYSTEMTEST_LEGACY_TAG=v0.2.0 test-system-docker`.
+Override the release tag if needed: `make SYSTEMTEST_LEGACY_TAG=v0.3.0 test-system-docker`.
 
 ### Faster local Docker loop (recommended)
 
@@ -81,11 +81,11 @@ Chain lifecycle:
 
 | Test name | Description |
 |-----------|-------------|
-| `TestChainUpgrade` | End-to-end upgrade handling; after legacy `SetupChain`, runs `scripts/customize_genesis.sh --network upgrade-test --skip-accounts`, then regenerates gentx in **`drop`** and runs gov until `PASSED` before the upgrade height. **Canonical doc:** [CHAIN_UPGRADE_SYSTEM_TEST.md](../../docs/guides/testing/CHAIN_UPGRADE_SYSTEM_TEST.md) (summary in [GENESIS.md](../../docs/guides/configuration/GENESIS.md#chain-upgrade-system-test-upgrade-test)) |
+| `TestChainUpgrade` | End-to-end upgrade from release **v0.3.0** to the current branch: `customize_genesis.sh --network upgrade-test`, gentx regen in **`drop`**, gov until `PASSED`, upgrade at height, smoke `bank send`. **Canonical doc:** `infinite-handbook` **CHAIN_UPGRADE_SYSTEM_TEST.md** |
 
-> ℹ️ `TestChainUpgrade` uses **`infinite_v0.2.x_to_v0.3.0`**, the same string as **`UpgradeName`** / **`UpgradeNameInfiniteV02xToV030`** in `infinited/upgrades.go` (production governance). The historical plan **`infinite-v0.1.10-to-v0.2.0`** remains registered for chain replay. Upstream’s sample plan names (e.g. `v0.4.0-to-v0.5.0`) appear only in their docs; this fork uses **`infinite_…`** plan strings.
+> ℹ️ `TestChainUpgrade` uses **`infinite_v0.3.0_to_v0.3.1`**, the same string as **`UpgradeName`** / **`UpgradeNameInfiniteV030ToV031`** in `infinited/upgrades.go`. Historical plans remain registered for chain replay.
 >
-> ℹ️ Package **`chainupgrade`** exports **one** **`RunChainUpgrade`** (`v0_2_0_to_v0_3_0.go`). Do not add a second upstream-only harness with the same symbol after merging cosmos/evm (see **`infinite-handbook`** **normas-migraciones-on-chain**).
+> ℹ️ Package **`chainupgrade`** exports **one** **`RunChainUpgrade`** (`v0_3_0_to_v0_3_1.go`). Do not add a second upstream-only harness with the same symbol after merging cosmos/evm (see **`infinite-handbook`** **normas-migraciones-on-chain**).
 >
 > ℹ️ The shared system test suite keeps a single chain alive across multiple tests when the node arguments are identical. Running several tests back-to-back therefore re-uses the same process unless a scenario explicitly changes the node configuration.
 
