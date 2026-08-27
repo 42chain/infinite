@@ -18,6 +18,7 @@
 Follow [infinite_v0.3.0_to_v0.3.1.md](docs/migrations/infinite_v0.3.0_to_v0.3.1.md) for upgrade instructions.
 
 - **Cosmos EVM alignment**: Security patch synchronized with upstream **Cosmos EVM v0.7.2** (StateDB balance hardening and related fixes).
+- **Cosmos EVM hotfix**: Hotfix synchronized with upstream **Cosmos EVM v0.7.3** (`v0.7.3-august-2026-hotfix`).
 - **On-chain upgrade plan**: `infinite_v0.3.0_to_v0.3.1` — handler in `infinited/upgrades.go`; system-test baseline **`v0.3.0`**.
 
 ## v0.3.0
@@ -149,6 +150,8 @@ Follow the [migration document](docs/migrations/v0.6.x_to_v0.7.0.md) for upgrade
 - [\#1008](https://github.com/cosmos/evm/pull/1008) Stop enforcing JSON-RPC global filter cap and allow reclaim filters via configurable idle timeout.
 - [\#1130](https://github.com/cosmos/evm/pull/1130) Use `sdk.ValidateAuthority` in `x/vm`, `x/erc20`, and `x/feemarket` `MsgServer` handlers so authority can optionally be centralized via the consensus `AuthorityParams` introduced in cosmos-sdk v0.54.
 - [\#1164](https://github.com/cosmos/evm/pull/1164) Remove zero gas config from `ics20.transferWithStateDB` so inner KV ops in ICS20 transfer execution are metered, mirroring [\#1103](https://github.com/cosmos/evm/pull/1103).
+- [\#1220](https://github.com/cosmos/evm/pull/1220) Use latest block for setting txn defaults in rpc call.
+- [\#1232](https://github.com/cosmos/evm/pull/1232) Validate ICS-20 acknowledgement encoding in the erc20 IBC v2 middleware.
 
 ### FEATURES
 
