@@ -18,6 +18,7 @@
 Follow [infinite_v0.3.0_to_v0.3.1.md](docs/migrations/infinite_v0.3.0_to_v0.3.1.md) for upgrade instructions.
 
 - **Cosmos EVM alignment**: Security patch synchronized with upstream **Cosmos EVM v0.7.2** (StateDB balance hardening and related fixes).
+- **Cosmos EVM hotfix**: Hotfix synchronized with upstream **Cosmos EVM v0.7.3** (`v0.7.3-august-2026-hotfix`).
 - **On-chain upgrade plan**: `infinite_v0.3.0_to_v0.3.1` — handler in `infinited/upgrades.go`; system-test baseline **`v0.3.0`**.
 
 ## v0.3.0
